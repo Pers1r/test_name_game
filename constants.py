@@ -1,0 +1,7 @@
+# screen settings
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
+RUNNING = True
+
+TILE_SIZE = 32
+CHUNK_SIZE = 16
