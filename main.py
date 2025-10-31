@@ -23,7 +23,10 @@ def main(debug=False):
     player = Player(0, 0)
     camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
 
-    world = World(seed=300)
+    if debug:
+        world = World(seed=300)
+    else:
+        world = World(seed=random.randint(1, 100000))
     for x in range(-5, 6):
         for y in range(-5, 6):
             world.get_or_generate_chunk(x, y)
@@ -49,10 +52,10 @@ def main(debug=False):
         player.update(dt)
         camera.update(player)
 
-        cam_chunk_x = camera.rect.x // (CHUNK_SIZE * TILE_SIZE)
-        cam_chunk_y = camera.rect.y // (CHUNK_SIZE * TILE_SIZE)
-        for y in range(cam_chunk_y - 1, cam_chunk_y + 2):
-            for x in range(cam_chunk_x - 1, cam_chunk_x + 2):
+        cam_chunk_x = camera.rect.center[0] // (CHUNK_SIZE * TILE_SIZE)
+        cam_chunk_y = camera.rect.center[1] // (CHUNK_SIZE * TILE_SIZE)
+        for y in range(cam_chunk_y - 3, cam_chunk_y + 3):
+            for x in range(cam_chunk_x - 3, cam_chunk_x + 3):
                 chunk_to_draw = world.get_or_generate_chunk(x, y)
                 chunk_to_draw.draw(screen, camera)
 

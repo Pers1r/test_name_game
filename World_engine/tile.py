@@ -5,14 +5,12 @@ from constants import *
 
 
 class Tile:
-    def __init__(self, grid_x, grid_y, ground_type="grass", is_walkable=True):
-        self.grid_x = grid_x
-        self.grid_y = grid_y
+    def __init__(self, ground_type, world_x, world_y, is_walkable=True):
         self.tile_type = ground_type
-        self.world_rect = pygame.Rect(grid_x, grid_y, TILE_SIZE, TILE_SIZE)
+        self.world_rect = pygame.Rect(world_x, world_y, TILE_SIZE, TILE_SIZE)
 
         self.color = "green"
-        if self.tile_type == "water":
+        if self.tile_type == "watter":
             self.color = "blue"
         elif self.tile_type == "rock":
             self.color = "grey"
