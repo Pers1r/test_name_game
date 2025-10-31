@@ -5,3 +5,10 @@ RUNNING = True
 
 TILE_SIZE = 32
 CHUNK_SIZE = 16
+
+# Colors
+GREEN = (40, 120, 40)
+BROWN = (100, 80, 50)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+BLUE = (50, 50, 200)
