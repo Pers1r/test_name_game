@@ -17,7 +17,8 @@ def main(debug=False):
     RUNNING = True
 
     # Create a window with NOFRAME flag
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.NOFRAME)
+    flags = pygame.NOFRAME | pygame.DOUBLEBUF | pygame.HWSURFACE
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags, vsync=1)
     print(f"Borderless window created with size: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
 
     player = Player(0, 0)
