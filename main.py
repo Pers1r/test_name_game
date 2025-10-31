@@ -27,7 +27,7 @@ def main(debug=False):
     if debug:
         world = World(seed=300)
     else:
-        world = World(seed=random.randint(1, 100000))
+        world = World(seed=random.randint(100, 1000))
     for x in range(-5, 6):
         for y in range(-5, 6):
             world.get_or_generate_chunk(x, y)
@@ -50,7 +50,7 @@ def main(debug=False):
 
         screen.fill(BLACK)
 
-        player.update(dt)
+        player.update(dt, world)
         camera.update(player)
 
         cam_chunk_x = camera.rect.center[0] // (CHUNK_SIZE * TILE_SIZE)
@@ -85,4 +85,4 @@ def main(debug=False):
 
 
 if __name__ == "__main__":
-    main(debug=True)
+    main()

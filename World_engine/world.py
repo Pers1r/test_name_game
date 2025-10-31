@@ -29,6 +29,35 @@ class World:
     #             visible_chunks.append(chunk)
     #     return visible_chunks
 
+    def get_tile_at_grid_pos(self, grid_x, grid_y):
+        try:
+            chunk_x = grid_x // CHUNK_SIZE
+            chunk_y = grid_y // CHUNK_SIZE
+
+            local_x = grid_x % CHUNK_SIZE
+            local_y = grid_y % CHUNK_SIZE
+
+            chunk = self.chunks.get((chunk_x, chunk_y))
+            if chunk:
+                return chunk.chunk[local_y][local_x]
+        except (IndexError, TypeError):
+            return None
+        return None
+
+    def get_collidable_tiles_near(self, player_rect):
+        collidable_tiles = []
+        grid_x = player_rect.centerx // TILE_SIZE
+        grid_y = player_rect.centery // TILE_SIZE
+
+        for y in range(grid_y - 1, grid_y + 2):
+            for x in range(grid_x - 1, grid_x + 2):
+                tile = self.get_tile_at_grid_pos(x, y)
+
+                if tile and not tile.is_walkable:
+                    collidable_tiles.append(tile)
+
+        return collidable_tiles
+
 
 
 

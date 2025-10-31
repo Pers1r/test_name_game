@@ -20,7 +20,7 @@ class Chunk:
                 noise_value = noise.pnoise2(global_tile_x*0.1, global_tile_y*0.1, base=seed)
 
                 if noise_value < -0.3:
-                    tile_type = "watter"
+                    tile_type = "water"
                 elif noise_value < 0.3:
                     tile_type = "grass"
                 else:
