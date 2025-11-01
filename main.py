@@ -50,7 +50,7 @@ def main(debug=False):
 
         screen.fill(BLACK)
 
-        player.update(dt, world)
+        player.update(dt, world, camera)
         camera.update(player)
 
         cam_chunk_x = camera.rect.center[0] // (CHUNK_SIZE * TILE_SIZE)
@@ -85,4 +85,4 @@ def main(debug=False):
 
 
 if __name__ == "__main__":
-    main()
+    main(debug=True)
