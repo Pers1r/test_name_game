@@ -5,16 +5,19 @@ from constants import *
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, debug=False):
         super().__init__()
-        self.radius = TILE_SIZE//4
+        self.radius = TILE_SIZE // 2.5
 
         self.pos = pygame.Vector2(x, y)
-        # 'self.rect' stores the player's TRUE position in the game WORLD
-        self.rect = pygame.Rect(x - self.radius, y - self.radius, TILE_SIZE//2, TILE_SIZE//2)
+        rect_size = (TILE_SIZE // 2.5)*2  # This is 16
+        self.rect = pygame.Rect(0, 0, rect_size, rect_size)
+        self.rect.center = (x, y)
         self.velocity = pygame.Vector2(0, 0)
         self.speed = 200
         self.angle = 0
+
+        self.debug = debug
 
         self.aim_offset = 2
         self.aim_size = 8
@@ -112,3 +115,6 @@ class Player(pygame.sprite.Sprite):
 
         # 8. Blit the rotated triangle to the screen
         screen.blit(rotated_triangle, rotated_rect)
+
+        if self.debug:
+            pygame.draw.rect(screen, "purple", screen_rect, width=1)

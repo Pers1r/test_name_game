@@ -4,7 +4,7 @@ import sys
 
 from World_engine.world import World
 from constants import *
-
+from assets_loader import *
 from World_engine import *
 from camera import Camera
 from player import Player
@@ -21,13 +21,22 @@ def main(debug=False):
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags, vsync=1)
     print(f"Borderless window created with size: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
 
-    player = Player(0, 0)
+    try:
+        tileset_image = pygame.image.load("assets/TileSet_V2.png").convert_alpha()
+    except pygame.error as e:
+        print(f"Unable to load tileset image: {e}")
+        pygame.quit()
+        sys.exit()
+
+    tile_dictionary = load_tiles_from_atlas(tileset_image, TILE_ATLAS)
+
+    player = Player(0, 0, debug=debug)
     camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
 
     if debug:
-        world = World(seed=300)
+        world = World(seed=300, tile_dictionary=tile_dictionary)
     else:
-        world = World(seed=random.randint(100, 1000))
+        world = World(seed=random.randint(100, 1000), tile_dictionary=tile_dictionary)
     for x in range(-5, 6):
         for y in range(-5, 6):
             world.get_or_generate_chunk(x, y)

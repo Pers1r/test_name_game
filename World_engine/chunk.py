@@ -4,9 +4,10 @@ from constants import *
 from .tile import *
 
 class Chunk:
-    def __init__(self, chunk_x, chunk_y):
+    def __init__(self, chunk_x, chunk_y, tile_dictionary):
         self.chunk_x = chunk_x
         self.chunk_y = chunk_y
+        self.tile_dictionary = tile_dictionary
 
         self.chunk = [[None for _ in range(CHUNK_SIZE)] for _ in range(CHUNK_SIZE)]
 
@@ -20,16 +21,18 @@ class Chunk:
                 noise_value = noise.pnoise2(global_tile_x*0.1, global_tile_y*0.1, base=seed)
 
                 if noise_value < -0.3:
-                    tile_type = "water"
+                    tile_type = "water_default"
                 elif noise_value < 0.3:
-                    tile_type = "grass"
+                    tile_type = "grass_default_1"
                 else:
-                    tile_type = "rock"
+                    tile_type = "rock_default"
 
                 world_x = global_tile_x * TILE_SIZE
                 world_y = global_tile_y * TILE_SIZE
 
-                self.chunk[row][col] = Tile(tile_type, world_x, world_y)
+                tile_image = self.tile_dictionary.get(tile_type)
+
+                self.chunk[row][col] = Tile(tile_type, world_x, world_y, tile_image)
 
     def draw(self, screen, camera):
         for row in self.chunk:

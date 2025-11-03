@@ -7,15 +7,16 @@ from .chunk import *
 
 
 class World:
-    def __init__(self, seed):
+    def __init__(self, seed, tile_dictionary):
         self.chunks = {}
         self.seed = seed
+        self.tile_dictionary = tile_dictionary
 
     def get_or_generate_chunk(self, chunk_x, chunk_y):
         if (chunk_x, chunk_y) in self.chunks:
             return self.chunks[(chunk_x, chunk_y)]
 
-        new_chunk = Chunk(chunk_x, chunk_y)
+        new_chunk = Chunk(chunk_x, chunk_y, self.tile_dictionary)
         new_chunk.generate_terrain(self.seed)
         self.chunks[(chunk_x, chunk_y)] = new_chunk
         return new_chunk
