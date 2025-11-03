@@ -21,6 +21,11 @@ def main(debug=False):
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags, vsync=1)
     print(f"Borderless window created with size: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
 
+    world_surface_width = int(SCREEN_WIDTH/ ZOOM_LEVEL)
+    world_surface_height = int(SCREEN_HEIGHT/ ZOOM_LEVEL)
+    world_surface = pygame.Surface((world_surface_width, world_surface_height))
+    print(f"World surface created with size: {world_surface_width}x{world_surface_height}")
+
     try:
         tileset_image = pygame.image.load("assets/TileSet_V2.png").convert_alpha()
     except pygame.error as e:
@@ -31,7 +36,7 @@ def main(debug=False):
     tile_dictionary = load_tiles_from_atlas(tileset_image, TILE_ATLAS)
 
     player = Player(0, 0, debug=debug)
-    camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
+    camera = Camera(world_surface_width, world_surface_height)
 
     if debug:
         world = World(seed=300, tile_dictionary=tile_dictionary)
@@ -57,19 +62,26 @@ def main(debug=False):
                 if event.key == pygame.K_ESCAPE: # Exit on ESCAPE
                     RUNNING = False
 
-        screen.fill(BLACK)
+        world_surface.fill(BLACK)
 
         player.update(dt, world, camera)
         camera.update(player)
 
         cam_chunk_x = camera.rect.center[0] // (CHUNK_SIZE * TILE_SIZE)
         cam_chunk_y = camera.rect.center[1] // (CHUNK_SIZE * TILE_SIZE)
-        for y in range(cam_chunk_y - 3, cam_chunk_y + 3):
-            for x in range(cam_chunk_x - 3, cam_chunk_x + 3):
+        for y in range(cam_chunk_y - 4, cam_chunk_y + 4):
+            for x in range(cam_chunk_x - 4, cam_chunk_x + 4):
                 chunk_to_draw = world.get_or_generate_chunk(x, y)
-                chunk_to_draw.draw(screen, camera)
+                chunk_to_draw.draw(world_surface, camera)
 
-        player.draw(screen, camera)
+        screen_mouse_pos = pygame.mouse.get_pos()
+        # Scale the mouse position down to match the world_surface
+        world_mouse_x = screen_mouse_pos[0] / ZOOM_LEVEL
+        world_mouse_y = screen_mouse_pos[1] / ZOOM_LEVEL
+
+        player.draw(world_surface, camera, (world_mouse_x, world_mouse_y))
+
+        pygame.transform.scale(world_surface, (SCREEN_WIDTH, SCREEN_HEIGHT), screen)
 
 
 

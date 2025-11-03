@@ -19,8 +19,8 @@ class Player(pygame.sprite.Sprite):
 
         self.debug = debug
 
-        self.aim_offset = 2
-        self.aim_size = 8
+        self.aim_offset = 2 / ZOOM_LEVEL
+        self.aim_size = 8 / ZOOM_LEVEL
 
         self.original_aim_triangle = pygame.Surface((self.aim_size*2, self.aim_size*2), pygame.SRCALPHA)
 
@@ -83,16 +83,16 @@ class Player(pygame.sprite.Sprite):
 
                 self.pos.y = self.rect.centery
 
-    def draw(self, screen, camera):
+    def draw(self, surface, camera, mouse_pos):
         # 1. Find stable screen rectangle
         screen_rect = camera.set_target(self.rect)
         screen_center = screen_rect.center
 
         # 2. Draw the main circle
-        pygame.draw.circle(screen, (234,182,118), screen_rect.center, self.radius)
+        pygame.draw.circle(surface, (234,182,118), screen_rect.center, self.radius)
 
         # 3. Get mouse position on screen
-        screen_mx, screen_my = pygame.mouse.get_pos()
+        screen_mx, screen_my = mouse_pos
         dx = screen_mx - screen_center[0]
         dy = screen_my - screen_center[1]
 
@@ -114,7 +114,7 @@ class Player(pygame.sprite.Sprite):
         rotated_rect.center = (round(orbit_x), round(orbit_y))
 
         # 8. Blit the rotated triangle to the screen
-        screen.blit(rotated_triangle, rotated_rect)
+        surface.blit(rotated_triangle, rotated_rect)
 
         if self.debug:
-            pygame.draw.rect(screen, "purple", screen_rect, width=1)
+            pygame.draw.rect(surface, "purple", screen_rect, width=1)

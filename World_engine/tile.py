@@ -13,9 +13,9 @@ class Tile:
 
         self.image = image
 
-        if self.tile_type == "water_default":
+        if "water" in self.tile_type:
             self.is_walkable = False
-        elif self.tile_type == "rock_default":
+        elif "rock" in self.tile_type:
             self.is_walkable = False
 
     def draw(self, screen, camera):
