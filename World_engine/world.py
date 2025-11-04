@@ -17,7 +17,7 @@ class World:
 
         if noise_value < -0.3:
             return "water"
-        elif noise_value < 0.3:
+        elif noise_value < 0.4:
             return "grass"
         else:
             return "rock"

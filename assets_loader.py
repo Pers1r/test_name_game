@@ -8,6 +8,7 @@ TILE_ATLAS = {
     'grass_default_2': (1 * tile_size, 6 * tile_size, tile_size, tile_size),
     'grass_default_3': (2 * tile_size, 6 * tile_size, tile_size, tile_size),
     'grass_default_4': (3 * tile_size, 6 * tile_size, tile_size, tile_size),
+
     'water_default': (0 * tile_size, 13 * tile_size, tile_size, tile_size),
 
     'water_grass_16': (1 * tile_size, 7 * tile_size, tile_size, tile_size), #NW
@@ -25,7 +26,6 @@ TILE_ATLAS = {
     'water_grass_208': (5 * tile_size, 8 * tile_size, tile_size, tile_size), #nw, se, WS
     'water_grass_224': (6 * tile_size, 8 * tile_size, tile_size, tile_size), #ne, se, WS
     'water_grass_240': (7 * tile_size, 8 * tile_size, tile_size, tile_size), #ne, se, nw, NE
-    #
     'water_grass_84': (0 * tile_size, 9 * tile_size, tile_size, tile_size), #W
     'water_grass_116': (1 * tile_size, 9 * tile_size, tile_size, tile_size), #W NE
     'water_grass_212': (2 * tile_size, 9 * tile_size, tile_size, tile_size), #W SE
@@ -56,9 +56,6 @@ TILE_ATLAS = {
     'water_grass_247': (3 * tile_size, 12 * tile_size, tile_size, tile_size), #N W S
     'water_grass_254': (4 * tile_size, 12 * tile_size, tile_size, tile_size), #W S E
     'water_grass_251': (5 * tile_size, 12 * tile_size, tile_size, tile_size), #N S E
-
-
-
     'water_grass_5':   (2 * tile_size, 11 * tile_size, tile_size, tile_size), # N, W
     'water_grass_1':   (4 * tile_size, 8 * tile_size, tile_size, tile_size), # N
     'water_grass_9':   (4 * tile_size, 11 * tile_size, tile_size, tile_size), # N, E
@@ -98,7 +95,7 @@ TILE_ATLAS = {
     'water_grass_191': (6 * tile_size, 12 * tile_size, tile_size, tile_size), # 4-cardinal + NW, NE, SE
     'water_grass_223': (6 * tile_size, 12 * tile_size, tile_size, tile_size), # 4-cardinal + NW, SW, SE
     'water_grass_239': (6 * tile_size, 12 * tile_size, tile_size, tile_size), # 4-cardinal + NE, SW, SE
-    'water_grass_255': (6 * tile_size, 13 * tile_size, tile_size, tile_size), # 4-cardinal + 4-corner
+    'water_grass_255': (6 * tile_size, 12 * tile_size, tile_size, tile_size), # 4-cardinal + 4-corner
     'water_grass_85':  (2 * tile_size, 11 * tile_size, tile_size, tile_size), # N, W, NW, SW
     'water_grass_169': (4 * tile_size, 11 * tile_size, tile_size, tile_size), # N, E, NE, SE
     'water_grass_86':  (0 * tile_size, 12 * tile_size, tile_size, tile_size), # S, W, NW, SW
@@ -115,7 +112,6 @@ TILE_ATLAS = {
     'water_grass_173': (5 * tile_size, 12 * tile_size, tile_size, tile_size), # N, W, E, NE, SE
     'water_grass_94':  (2 * tile_size, 12 * tile_size, tile_size, tile_size), # S, W, E, NW, SW
     'water_grass_174': (4 * tile_size, 12 * tile_size, tile_size, tile_size), # S, W, E, NE, SE
-    # not added yet
     'water_grass_68': (0 * tile_size, 9 * tile_size, tile_size, tile_size), # W WS
     'water_grass_20': (0 * tile_size, 9 * tile_size, tile_size, tile_size), # W WN
     'water_grass_17': (4 * tile_size, 9 * tile_size, tile_size, tile_size), # N WN
@@ -132,8 +128,22 @@ TILE_ATLAS = {
     'water_grass_135': (5 * tile_size, 12 * tile_size, tile_size, tile_size), # N E S NE SE WS
     'water_grass_222': (4 * tile_size, 12 * tile_size, tile_size, tile_size), # W S E WS SE WN
     'water_grass_238': (4 * tile_size, 12 * tile_size, tile_size, tile_size), # W S E WS SE NE
-
-
+    'water_grass_133': (3 * tile_size, 11 * tile_size, tile_size, tile_size), # W N SE WS
+    'water_grass_69': (3 * tile_size, 11 * tile_size, tile_size, tile_size), # W N SE
+    'water_grass_213': (3 * tile_size, 11 * tile_size, tile_size, tile_size), # W N WS WN SE
+    'water_grass_261': (3 * tile_size, 11 * tile_size, tile_size, tile_size), # W N WS NE SE
+    'water_grass_105': (5 * tile_size, 11 * tile_size, tile_size, tile_size), # E N WS NE
+    'water_grass_73': (5 * tile_size, 11 * tile_size, tile_size, tile_size), # E N WS
+    'water_grass_233': (5 * tile_size, 11 * tile_size, tile_size, tile_size), # E N WS NE SE
+    'water_grass_121': (5 * tile_size, 11 * tile_size, tile_size, tile_size), # E N WS NE WN
+    'water_grass_26': (7 * tile_size, 11 * tile_size, tile_size, tile_size), # S E WN
+    'water_grass_154': (7 * tile_size, 11 * tile_size, tile_size, tile_size), # S E WN SE
+    'water_grass_186': (7 * tile_size, 11 * tile_size, tile_size, tile_size), # S E WN SE NE
+    'water_grass_218': (7 * tile_size, 11 * tile_size, tile_size, tile_size), # S E WN SE WS
+    'water_grass_38': (1 * tile_size, 12 * tile_size, tile_size, tile_size), # W S NE
+    'water_grass_102': (1 * tile_size, 12 * tile_size, tile_size, tile_size), # W S NE WS
+    'water_grass_118': (1 * tile_size, 12 * tile_size, tile_size, tile_size), # W S NE WS WN
+    'water_grass_230': (1 * tile_size, 12 * tile_size, tile_size, tile_size), # W S NE WS SE
 
     'rock_default' : (7 * tile_size, 12 * tile_size, tile_size, tile_size),
 }

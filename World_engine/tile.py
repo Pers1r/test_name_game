@@ -14,14 +14,20 @@ class Tile:
         self.image = image
 
         if "water" in self.tile_type:
+            self.color = "blue"
             self.is_walkable = False
         elif "rock" in self.tile_type:
+            self.color = "grey"
             self.is_walkable = False
+        else:
+            self.color = "green"
 
     def draw(self, screen, camera):
         screen_rect = camera.set_target(self.world_rect)
 
-        # pygame.draw.rect(screen, pygame.SRCALPHA, screen_rect)
+        # pygame.draw.rect(screen, self.color, screen_rect)
         screen.blit(self.image, screen_rect)
+        if not self.is_walkable:
+            pygame.draw.rect(screen, (255, 0, 0), screen_rect, 1) # Draw a RED box around non-walkable tiles
 
 

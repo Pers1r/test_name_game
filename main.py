@@ -62,7 +62,7 @@ def main(debug=False):
                 if event.key == pygame.K_ESCAPE: # Exit on ESCAPE
                     RUNNING = False
 
-        world_surface.fill(BLACK)
+        world_surface.fill("red")
 
         player.update(dt, world, camera)
         camera.update(player)

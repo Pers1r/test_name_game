@@ -38,11 +38,14 @@ class Chunk:
             else:
                 return f"water_grass_{mask}" # e.g., "water_grass_21"
 
-        if base_type == "grass":
-            return f"grass_default_{random.randint(1, 4)}"
+        elif base_type == "grass":
+            if random.randint(1,1000) < 200:
+                return f"grass_default_{random.randint(2, 4)}"
+            else:
+                return "grass_default_1"
 
         # --- Rock (Simplified) ---
-        if base_type == "rock":
+        elif base_type == "rock":
             return "rock_default"
 
         # Default fallback
