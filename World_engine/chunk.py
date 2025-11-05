@@ -12,6 +12,11 @@ class Chunk:
 
         self.chunk = [[None for _ in range(CHUNK_SIZE)] for _ in range(CHUNK_SIZE)]
 
+        self.surface = pygame.Surface((CHUNK_SIZE*TILE_SIZE, CHUNK_SIZE*TILE_SIZE), pygame.SRCALPHA)
+        self.world_rect = self.surface.get_rect(
+            topleft=(self.chunk_x*CHUNK_SIZE*TILE_SIZE, self.chunk_y*CHUNK_SIZE*TILE_SIZE)
+        )
+
     def get_tile_name_by_context(self, world, base_type, x, y):
         if base_type == "water":
             mask = 0
@@ -77,10 +82,12 @@ class Chunk:
 
                 self.chunk[row][col] = Tile(tile_name, world_x, world_y, tile_image)
 
+                local_x = col * TILE_SIZE
+                local_y = row * TILE_SIZE
+                self.surface.blit(tile_image, (local_x, local_y))
+
     def draw(self, screen, camera):
-        for row in self.chunk:
-            for tile in row:
-                if tile:
-                    tile.draw(screen, camera)
+        screen_rect = camera.set_target(self.world_rect)
+        screen.blit(self.surface, screen_rect)
 
 

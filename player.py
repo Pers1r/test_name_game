@@ -1,6 +1,7 @@
 import pygame
 import math
 
+from bullet import Bullet
 from constants import *
 
 
@@ -29,6 +30,8 @@ class Player(pygame.sprite.Sprite):
         p2 = (size*0.5, size*0.5)
         p3 = (size*0.5, size*1.5)
         pygame.draw.polygon(self.original_aim_triangle, (0, 0, 0), [p1, p2, p3])
+        self.shoot_delay = 150
+        self.last_shoot_time = 0
 
     def update(self, dt, world, camera):
         # Get input
@@ -118,3 +121,17 @@ class Player(pygame.sprite.Sprite):
 
         if self.debug:
             pygame.draw.rect(surface, "purple", screen_rect, width=1)
+
+    def shoot(self):
+        current_time = pygame.time.get_ticks()
+
+        if current_time - self.last_shoot_time > self.shoot_delay:
+            self.last_shoot_time = current_time
+            orbit_dist = self.radius + self.aim_offset + (self.aim_size / 2) + 5
+
+            start_x = self.rect.centerx + math.cos(self.angle) * orbit_dist
+            start_y = self.rect.centery + math.sin(self.angle) * orbit_dist
+
+            new_bullet = Bullet(start_x, start_y, self.angle)
+            return new_bullet
+        return None

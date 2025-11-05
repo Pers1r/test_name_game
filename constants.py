@@ -6,7 +6,11 @@ RUNNING = True
 TILE_SIZE = 32
 CHUNK_SIZE = 16
 
-ZOOM_LEVEL = 1.5
+ZOOM_LEVEL = 1.0
+
+# Player
+
+
 
 # Colors
 GREEN = (40, 120, 40)
