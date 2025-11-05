@@ -4,24 +4,23 @@ from constants import *
 from pathfinding import astar
 
 AVOIDANCE_RADIUS = TILE_SIZE
-SEPARATION_STRENGTH = 1.5
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
 
         self.pos = pygame.Vector2(x, y)
-        self.rect = pygame.Rect(0, 0, TILE_SIZE//2, TILE_SIZE//2 )
+        self.rect = pygame.Rect(0, 0, ENEMY_SIZE, ENEMY_SIZE)
         self.rect.center = self.pos
 
         self.velocity = pygame.Vector2(0, 0)
-        self.speed = 100
-        self.health = 10
+        self.speed = ENEMY_SPEED
+        self.health = ENEMY_HEALTH
         self.is_alive = True
 
         self.path = []
         self.path_index = 0
-        self.path_recalc_delay = 1000
+        self.path_recalc_delay = PATH_RECALC_DELAY
         self.last_path_recalc_time = 0
 
     def update(self, dt, player, world, enemy_list):

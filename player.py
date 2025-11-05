@@ -8,18 +8,31 @@ from constants import *
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y, debug=False):
         super().__init__()
-        self.radius = TILE_SIZE // 2.5
+        self.radius = PLAYER_RADIUS
 
         self.pos = pygame.Vector2(x, y)
-        rect_size = (TILE_SIZE // 2.5)*2  # This is 16
+        rect_size = PLAYER_RADIUS*2  # This is 16
         self.rect = pygame.Rect(0, 0, rect_size, rect_size)
         self.rect.center = (x, y)
         self.velocity = pygame.Vector2(0, 0)
-        self.speed = 200
+        self.speed = PLAYER_SPEED
         self.angle = 0
 
         self.debug = debug
 
+        self.update_zoom_properties(ZOOM_LEVEL)
+
+        self.shoot_delay = PLATER_SHOOT_DELAY
+        self.last_shoot_time = 0
+
+        self.aim_offset = 2 / ZOOM_LEVEL
+        self.aim_size = 8 / ZOOM_LEVEL
+
+        self.original_aim_triangle = pygame.Surface((self.aim_size*2, self.aim_size*2), pygame.SRCALPHA)
+
+    def update_zoom_properties(self, zoom_level):
+        if zoom_level == 0:
+            zoom_level = 0.8
         self.aim_offset = 2 / ZOOM_LEVEL
         self.aim_size = 8 / ZOOM_LEVEL
 
@@ -30,8 +43,7 @@ class Player(pygame.sprite.Sprite):
         p2 = (size*0.5, size*0.5)
         p3 = (size*0.5, size*1.5)
         pygame.draw.polygon(self.original_aim_triangle, (0, 0, 0), [p1, p2, p3])
-        self.shoot_delay = 150
-        self.last_shoot_time = 0
+
 
     def update(self, dt, world, camera):
         # Get input

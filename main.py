@@ -32,6 +32,51 @@ def spawn_enemy(player, world_surface_width, enemy_list):
 
     enemy_list.append(Enemy(spawn_x, spawn_y))
 
+def draw_pause_menu(screen, font):
+    # Create a semi-transparent overlay
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 150)) # Black with 150 alpha
+    screen.blit(overlay, (0, 0))
+
+    # Menu text
+    menu_title = font.render("Paused", True, WHITE)
+    resume_text = font.render("Resume", True, WHITE)
+    options_text = font.render("Options", True, WHITE)
+    quit_text = font.render("Quit", True, WHITE)
+
+    # Get mouse position for hover checks
+    mx, my = pygame.mouse.get_pos()
+
+    # Button Rects (we create them here to position text)
+    # Centered on screen
+    center_x = SCREEN_WIDTH // 2
+    center_y = SCREEN_HEIGHT // 2
+
+    title_rect = menu_title.get_rect(center=(center_x, center_y - 100))
+    resume_btn_rect = resume_text.get_rect(center=(center_x, center_y))
+    options_btn_rect = options_text.get_rect(center=(center_x, center_y + 50))
+    quit_btn_rect = quit_text.get_rect(center=(center_x, center_y + 100))
+
+    # --- Draw hover effect ---
+    if resume_btn_rect.collidepoint(mx, my):
+        pygame.draw.rect(screen, (50, 50, 50), resume_btn_rect.inflate(20, 10))
+    if options_btn_rect.collidepoint(mx, my):
+        pygame.draw.rect(screen, (50, 50, 50), options_btn_rect.inflate(20, 10))
+    if quit_btn_rect.collidepoint(mx, my):
+        pygame.draw.rect(screen, (50, 50, 50), quit_btn_rect.inflate(20, 10))
+
+    # Draw text
+    screen.blit(menu_title, title_rect)
+    screen.blit(resume_text, resume_btn_rect)
+    screen.blit(options_text, options_btn_rect)
+    screen.blit(quit_text, quit_btn_rect)
+
+    # Return the rects for click detection
+    return {
+        "resume": resume_btn_rect,
+        "options": options_btn_rect,
+        "quit": quit_btn_rect
+    }
 
 def main(debug=False, performance=False):
     pygame.init()
@@ -45,8 +90,10 @@ def main(debug=False, performance=False):
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
     print(f"Fixed window created with size: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
 
-    world_surface_width = int(SCREEN_WIDTH/ ZOOM_LEVEL)
-    world_surface_height = int(SCREEN_HEIGHT/ ZOOM_LEVEL)
+    zoom_level = ZOOM_LEVEL
+
+    world_surface_width = int(SCREEN_WIDTH/ zoom_level)
+    world_surface_height = int(SCREEN_HEIGHT/ zoom_level)
     world_surface = pygame.Surface((world_surface_width, world_surface_height))
     print(f"World surface created with size: {world_surface_width}x{world_surface_height}")
 
@@ -66,8 +113,8 @@ def main(debug=False, performance=False):
         world = World(seed=300, tile_dictionary=tile_dictionary)
     else:
         world = World(seed=random.randint(100, 1000), tile_dictionary=tile_dictionary)
-    for x in range(-5, 6):
-        for y in range(-5, 6):
+    for x in range(-START_CHUNKS_NUM, START_CHUNKS_NUM + 1):
+        for y in range(-START_CHUNKS_NUM, START_CHUNKS_NUM + 1):
             world.get_or_generate_chunk(x, y)
 
     font = pygame.font.Font(None, 30)
@@ -81,6 +128,9 @@ def main(debug=False, performance=False):
     spawn_timer = 0
     spawn_delay = 1000
 
+    game_paused = False
+    pause_btn_rects = {}
+
     def start_next_wave():
         nonlocal wave_number, wave_active, enemies_to_spawn_this_wave, spawn_timer
         if wave_active: # Don't start a wave if one is active
@@ -92,47 +142,85 @@ def main(debug=False, performance=False):
         spawn_timer = pygame.time.get_ticks()
 
     while RUNNING:
-        dt = clock.tick(60) / 1000.0
+        dt = clock.tick(FPS) / 1000.0
         current_time = pygame.time.get_ticks()
+
+        mx, my = pygame.mouse.get_pos()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 RUNNING = False
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE: # Exit on ESCAPE
-                    RUNNING = False
-                if event.key == pygame.K_n: # Press 'N' to start next wave
-                    start_next_wave()
+                    game_paused = not game_paused
 
+                if not game_paused:
+                    if event.key == pygame.K_n: # Press 'N' to start next wave
+                        start_next_wave()
 
-        mouse_state = pygame.mouse.get_pressed()
-        if mouse_state[0]:
-            new_bullet = player.shoot()
-            if new_bullet:
-                bullets.append(new_bullet)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if game_paused:
+                    if event.button == 1:
+                        if button_rects["resume"].collidepoint(mx, my):
+                            game_paused = False
+                        if button_rects["options"].collidepoint(mx, my):
+                            print("Options clicked!")
+                            # TODO: ...
+                        if button_rects["quit"].collidepoint(mx, my):
+                            RUNNING = False
 
-        if wave_active and enemies_to_spawn_this_wave > 0:
-            if current_time - spawn_timer > spawn_delay:
-                spawn_timer = current_time
-                spawn_enemy(player, world_surface_width, enemy_list)
-                enemies_to_spawn_this_wave -= 1
+                if not game_paused:
+                    if event.button == 4:
+                        zoom_level -= 0.1
+                    if event.button == 5:
+                        zoom_level += 0.1
 
-        if wave_active and enemies_to_spawn_this_wave == 0 and not enemy_list:
-            wave_active = False
-            print(f"--- WAVE {wave_number} COMPLETE! ---")
-            print("Press 'N' to start next wave.")
+                    zoom_level = max(0.8, min(zoom_level, 2.3))
 
-        player.update(dt, world, camera)
-        camera.update(player)
+                    # --- RE-CREATE SURFACES ON ZOOM CHANGE ---
+                    world_surface_width = int(SCREEN_WIDTH / zoom_level)
+                    world_surface_height = int(SCREEN_HEIGHT / zoom_level)
+                    world_surface = pygame.Surface((world_surface_width, world_surface_height))
 
-        for bullet in bullets:
-            bullet.update(dt, world, enemy_list)
+                    # Update camera
+                    camera.width = world_surface_width
+                    camera.height = world_surface_height
+                    camera.rect.width = world_surface_width
+                    camera.rect.height = world_surface_height
 
-        for enemy in enemy_list:
-            enemy.update(dt, player, world, enemy_list)
+                    # Update player
+                    player.update_zoom_properties(zoom_level)
 
-        bullets = [bullet for bullet in bullets if bullet.lifetime > 0]
-        enemy_list = [e for e in enemy_list if e.is_alive]
+        if not game_paused:
+            mouse_state = pygame.mouse.get_pressed()
+            if mouse_state[0]:
+                new_bullet = player.shoot()
+                if new_bullet:
+                    bullets.append(new_bullet)
+
+            if wave_active and enemies_to_spawn_this_wave > 0:
+                if current_time - spawn_timer > spawn_delay:
+                    spawn_timer = current_time
+                    spawn_enemy(player, world_surface_width, enemy_list)
+                    enemies_to_spawn_this_wave -= 1
+
+            if wave_active and enemies_to_spawn_this_wave == 0 and not enemy_list:
+                wave_active = False
+                print(f"--- WAVE {wave_number} COMPLETE! ---")
+                print("Press 'N' to start next wave.")
+
+            player.update(dt, world, camera)
+            camera.update(player)
+
+            for bullet in bullets:
+                bullet.update(dt, world, enemy_list)
+
+            for enemy in enemy_list:
+                enemy.update(dt, player, world, enemy_list)
+
+            bullets = [bullet for bullet in bullets if bullet.lifetime > 0]
+            enemy_list = [e for e in enemy_list if e.is_alive]
 
         world_surface.fill("black")
 
@@ -188,6 +276,9 @@ def main(debug=False, performance=False):
             if not wave_active and wave_number == 0:
                 wave_prompt_text = font.render("Press 'N' to start the first wave!", True, WHITE)
                 screen.blit(wave_prompt_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2))
+
+        if game_paused:
+            button_rects = draw_pause_menu(screen, font)
 
         pygame.display.flip()
 

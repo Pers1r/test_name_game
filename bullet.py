@@ -7,13 +7,13 @@ class Bullet(pygame.sprite.Sprite):
         super().__init__()
 
         self.pos = pygame.Vector2(x, y)
-        self.speed = 700
+        self.speed = BULLET_SPEED
 
         self.velocity = pygame.Vector2(math.cos(angle), math.sin(angle)) * self.speed
 
-        self.rect = pygame.Rect(x-2, y-2, 4, 4)
+        self.rect = pygame.Rect(x-2, y-2, BULLET_SIZE, BULLET_SIZE)
 
-        self.lifetime = 2.0
+        self.lifetime = BULLET_LIFETIME
 
     def update(self, dt, world, enemy_list):
         self.pos += self.velocity * dt
