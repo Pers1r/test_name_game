@@ -13,6 +13,8 @@ class Camera:
         self.width = width
         self.height = height
 
+        self.world = None # Will be set from main.py
+
     def set_target(self, target_rect):
         """
         This is the most important method.

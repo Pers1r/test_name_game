@@ -60,6 +60,20 @@ class World:
 
         return collidable_tiles
 
+    def set_tile(self, grid_x, grid_y, new_tile_name):
+        try:
+            chunk_x = grid_x // CHUNK_SIZE
+            chunk_y = grid_y // CHUNK_SIZE
+            local_x = grid_x % CHUNK_SIZE
+            local_y = grid_y % CHUNK_SIZE
+
+            chunk = self.chunks.get((chunk_x, chunk_y))
+            if chunk:
+                chunk.update_tile_at(local_x, local_y, new_tile_name, self.tile_dictionary)
+            else:
+                print(f"Error: Tried to set tile in non-existent chunk ({chunk_x}, {chunk_y})")
+        except Exception as e:
+            print(f"Error setting tile: {e}")
 
 
 

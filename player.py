@@ -29,6 +29,7 @@ class Player(pygame.sprite.Sprite):
         self.aim_size = 8 / ZOOM_LEVEL
 
         self.original_aim_triangle = pygame.Surface((self.aim_size*2, self.aim_size*2), pygame.SRCALPHA)
+        self.update_zoom_properties(ZOOM_LEVEL)
 
     def update_zoom_properties(self, zoom_level):
         if zoom_level == 0:

@@ -13,6 +13,9 @@ from player import Player
 from bullet import Bullet
 from enemy import Enemy
 
+from Building.build_data import *
+from Building.building_manager import *
+
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
@@ -113,11 +116,16 @@ def main(debug=False, performance=False):
         world = World(seed=300, tile_dictionary=tile_dictionary)
     else:
         world = World(seed=random.randint(100, 1000), tile_dictionary=tile_dictionary)
+
+    camera.world = world
+
     for x in range(-START_CHUNKS_NUM, START_CHUNKS_NUM + 1):
         for y in range(-START_CHUNKS_NUM, START_CHUNKS_NUM + 1):
             world.get_or_generate_chunk(x, y)
 
     font = pygame.font.Font(None, 30)
+
+    building_manager = BuildingManager(BUILD_DATA, tile_dictionary)
 
     bullets = []
     enemy_list = []
@@ -146,10 +154,16 @@ def main(debug=False, performance=False):
         current_time = pygame.time.get_ticks()
 
         mx, my = pygame.mouse.get_pos()
+        screen_mouse_pos = (mx, my)
+        world_mouse_x = screen_mouse_pos[0] / zoom_level
+        world_mouse_y = screen_mouse_pos[1] / zoom_level
+        world_mouse_pos = (world_mouse_x, world_mouse_y)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 RUNNING = False
+
+            building_manager.handle_input(event, world, world_mouse_pos)
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE: # Exit on ESCAPE
@@ -170,29 +184,23 @@ def main(debug=False, performance=False):
                         if button_rects["quit"].collidepoint(mx, my):
                             RUNNING = False
 
-                if not game_paused:
-                    if event.button == 4:
-                        zoom_level -= 0.1
-                    if event.button == 5:
-                        zoom_level += 0.1
+        for event in pygame.event.get(pygame.MOUSEWHEEL):
+            if not game_paused and not building_manager.building_mode:
+                if event.y > 0: # Scroll Up
+                    zoom_level -= 0.1
+                elif event.y < 0: # Scroll Down
+                    zoom_level += 0.1
 
-                    zoom_level = max(0.8, min(zoom_level, 2.3))
+                zoom_level = max(0.8, min(zoom_level, 2.3))
+                # ... (re-create surfaces logic) ...
+                world_surface_width = int(SCREEN_WIDTH / zoom_level)
+                world_surface_height = int(SCREEN_HEIGHT / zoom_level)
+                world_surface = pygame.Surface((world_surface_width, world_surface_height))
+                camera.width = camera.rect.width = world_surface_width
+                camera.height = camera.rect.height = world_surface_height
+                player.update_zoom_properties(zoom_level)
 
-                    # --- RE-CREATE SURFACES ON ZOOM CHANGE ---
-                    world_surface_width = int(SCREEN_WIDTH / zoom_level)
-                    world_surface_height = int(SCREEN_HEIGHT / zoom_level)
-                    world_surface = pygame.Surface((world_surface_width, world_surface_height))
-
-                    # Update camera
-                    camera.width = world_surface_width
-                    camera.height = world_surface_height
-                    camera.rect.width = world_surface_width
-                    camera.rect.height = world_surface_height
-
-                    # Update player
-                    player.update_zoom_properties(zoom_level)
-
-        if not game_paused:
+        if not game_paused and not building_manager.building_mode:
             mouse_state = pygame.mouse.get_pressed()
             if mouse_state[0]:
                 new_bullet = player.shoot()
@@ -210,8 +218,6 @@ def main(debug=False, performance=False):
                 print(f"--- WAVE {wave_number} COMPLETE! ---")
                 print("Press 'N' to start next wave.")
 
-            player.update(dt, world, camera)
-            camera.update(player)
 
             for bullet in bullets:
                 bullet.update(dt, world, enemy_list)
@@ -221,6 +227,11 @@ def main(debug=False, performance=False):
 
             bullets = [bullet for bullet in bullets if bullet.lifetime > 0]
             enemy_list = [e for e in enemy_list if e.is_alive]
+
+        if not game_paused:
+            if building_manager.building_mode:
+                player.update(dt, world, camera)
+                camera.update(player)
 
         world_surface.fill("black")
 
@@ -243,6 +254,8 @@ def main(debug=False, performance=False):
 
         for enemy in enemy_list:
             enemy.draw(world_surface, camera)
+
+        building_manager.draw_ghost(world_surface, camera, world_mouse_pos)
 
         pygame.transform.scale(world_surface, (SCREEN_WIDTH, SCREEN_HEIGHT), screen)
         # screen.blit(world_surface, (0, 0))
@@ -273,9 +286,18 @@ def main(debug=False, performance=False):
             screen.blit(text6, (10, 160))
             screen.blit(text7, (10, 190))
 
-            if not wave_active and wave_number == 0:
-                wave_prompt_text = font.render("Press 'N' to start the first wave!", True, WHITE)
-                screen.blit(wave_prompt_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2))
+            build_text = f"Build Mode: {building_manager.building_mode}"
+            build_sel_text = f"Selected: {building_manager.selected_building_id}"
+
+            text9 = font.render(build_text, True, WHITE)
+            text10 = font.render(build_sel_text, True, WHITE)
+
+            screen.blit(text9, (10, 250))
+            screen.blit(text10, (10, 280))
+
+            # if not wave_active and wave_number == 0:
+            #     wave_prompt_text = font.render("Press 'N' to start the first wave!", True, WHITE)
+            #     screen.blit(wave_prompt_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2))
 
         if game_paused:
             button_rects = draw_pause_menu(screen, font)

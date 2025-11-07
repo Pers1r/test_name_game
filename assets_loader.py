@@ -146,6 +146,7 @@ TILE_ATLAS = {
     'water_grass_230': (1 * tile_size, 12 * tile_size, tile_size, tile_size), # W S NE WS SE
 
     'rock_default' : (7 * tile_size, 12 * tile_size, tile_size, tile_size),
+
 }
 
 def load_tiles_from_atlas(tileset_image, atlas_definition):

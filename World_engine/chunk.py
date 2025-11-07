@@ -86,8 +86,29 @@ class Chunk:
                 local_y = row * TILE_SIZE
                 self.surface.blit(tile_image, (local_x, local_y))
 
+    def update_tile_at(self, local_x, local_y, new_tile_name, tile_dictionary):
+        new_tile_image = tile_dictionary.get(new_tile_name)
+        if not new_tile_image:
+            print(f"Error: Tile name '{new_tile_name}' not in dictionary.")
+            new_tile_image = tile_dictionary.get("rock_default") # Fallback
+            new_tile_name = "rock_default"
+
+        world_x = (self.chunk_x * CHUNK_SIZE + local_x) * TILE_SIZE
+        world_y = (self.chunk_y * CHUNK_SIZE + local_y) * TILE_SIZE
+
+        new_tile = Tile(new_tile_name, world_x, world_y, new_tile_image)
+        self.chunk[local_y][local_x] = new_tile
+
+        draw_pos = (local_x * TILE_SIZE, local_y * TILE_SIZE)
+        # Clear the old tile area (fill with a transparent color)
+        self.surface.fill((0, 0, 0, 0), pygame.Rect(draw_pos, (TILE_SIZE, TILE_SIZE)))
+        # Blit the new tile image
+        self.surface.blit(new_tile_image, draw_pos)
+
+
     def draw(self, screen, camera):
         screen_rect = camera.set_target(self.world_rect)
         screen.blit(self.surface, screen_rect)
+
 
 
