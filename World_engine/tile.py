@@ -24,16 +24,16 @@ class Tile:
             self.is_walkable = True
             self.is_bullet_penetrable = True
 
-            self.is_buildable = True
+            self._is_buildable = True
 
         elif "wall" in self.tile_type:
             self.color = "grey"
             self.is_walkable = False
             self.is_bullet_penetrable = False
-            self.is_buildable = False
+            self._is_buildable = False
 
         elif "turret" in self.tile_type:
             self.color = "red"
             self.is_walkable = False
             self.is_bullet_penetrable = False
-            self.is_buildable = False
+            self._is_buildable = False

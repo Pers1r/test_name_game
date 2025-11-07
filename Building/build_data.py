@@ -3,18 +3,18 @@ from constants import *
 
 # This is our "database"
 BUILD_DATA = {
-    "wall": {
-        "id": "wall",
-        "name": "Wall",
+    "main_crystal": {
+        "id": "main_crystal",
+        "name": "Main Crystal",
         "keybind": pygame.K_1,
-        "tile_name": "wall_tile", # The name of the tile to create
-        "placeholder_color": (100, 100, 100) # Gray
+        "image_id": "main_crystal",
+        "game_size": 2
     },
-    "turret": {
-        "id": "turret",
-        "name": "Turret",
+    "work_branch": {
+        "id": "work_branch",
+        "name": "Workbench",
         "keybind": pygame.K_2,
-        "tile_name": "turret_tile", # The name of the tile to create
-        "placeholder_color": (200, 50, 50) # Red
+        "image_id": "work_branch",
+        "game_size": 1
     },
 }

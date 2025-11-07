@@ -149,6 +149,19 @@ TILE_ATLAS = {
 
 }
 
+BUILD_IMAGES = {
+    'main_crystal': {
+        'path': "assets/Crystals/Assets_texture_shadow_dark/Blue_crystal1.png", #path to image
+        'actual_size': 64, # in px
+        'game_size': 2 # in tiles
+    },
+    'work_branch': {
+        'path': 'assets/Tiles/table.png',
+        'actual_size': 128,
+        'game_size': 1,
+    }
+}
+
 def load_tiles_from_atlas(tileset_image, atlas_definition):
     tile_dictionary = {}
     print("Loading tiles...")
@@ -165,3 +178,20 @@ def load_tiles_from_atlas(tileset_image, atlas_definition):
         tile_dictionary[name] = tile_image
 
     return tile_dictionary
+
+def load_build_images(build_images_data):
+    loaded_surfaces = {}
+
+    for image_id, data in build_images_data.items():
+        try:
+            image = pygame.image.load(data["path"]).convert_alpha()
+
+            target_pixel_size = data["actual_size"] // (data["actual_size"]//TILE_SIZE) * data["game_size"]
+
+            scaled_image = pygame.transform.scale(image, (target_pixel_size, target_pixel_size))
+            loaded_surfaces[image_id] = scaled_image
+            print(f"Loaded building image: {image_id}")
+        except Exception as e:
+            print(f"Error loading building image '{image_id}' at path '{data['path']}': {e}")
+
+    return loaded_surfaces
