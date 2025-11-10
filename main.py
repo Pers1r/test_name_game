@@ -15,8 +15,9 @@ from bullet import Bullet
 from enemy import Enemy
 
 from Building.building import Building
-from Building.build_data import *
-from Building.building_manager import *
+
+from Inventory.inventory_manager import InventoryManager
+from Inventory.item import BuildableItem
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -132,8 +133,8 @@ def main(debug=False, performance=False):
 
     font = pygame.font.Font(None, 30)
 
-    building_manager = BuildingManager(BUILD_DATA, tile_dictionary, build_image_surfaces)
-    building_manager.world_manager = world_manager
+    inventory_manager = InventoryManager(world_manager, build_image_surfaces)
+    inventory_manager.spawn_starting_items()
 
     bullets = []
     enemy_list = []
@@ -173,6 +174,8 @@ def main(debug=False, performance=False):
         world_mouse_y = camera.rect.y + surface_mouse_y
         world_mouse_pos = (world_mouse_x, world_mouse_y)
 
+        game_active = not game_paused and not inventory_manager.is_open()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 RUNNING = False
@@ -194,42 +197,44 @@ def main(debug=False, performance=False):
 
             # --- Handle Running Game State ---
             else:
-                building_manager.handle_input(event, current_world, world_mouse_pos)
+                inventory_manager.handle_input(event, current_world, world_mouse_pos)
 
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_n: # Press 'N' to start next wave
-                        start_next_wave()
+                if game_active:
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_n: # Press 'N' to start next wave
+                            start_next_wave()
 
-                    if event.key == pygame.K_e:
-                        player.handle_interaction(world_manager, camera)
+                        if event.key == pygame.K_f:
+                            player.handle_interaction(world_manager, camera)
 
-                if event.type == pygame.MOUSEWHEEL:
-                    if not building_manager.building_mode:
-                        if event.y < 0: # Scroll Up
-                            zoom_level -= 0.1
-                        elif event.y > 0: # Scroll Down
-                            zoom_level += 0.1
+                    if event.type == pygame.MOUSEWHEEL:
+                        if not building_manager.building_mode:
+                            if event.y < 0: # Scroll Up
+                                zoom_level -= 0.1
+                            elif event.y > 0: # Scroll Down
+                                zoom_level += 0.1
 
-                        zoom_level = max(0.8, min(zoom_level, 2.3))
-                        # ... (re-create surfaces logic) ...
-                        world_surface_width = int(SCREEN_WIDTH / zoom_level)
-                        world_surface_height = int(SCREEN_HEIGHT / zoom_level)
-                        world_surface = pygame.Surface((world_surface_width, world_surface_height))
-                        camera.width = camera.rect.width = world_surface_width
-                        camera.height = camera.rect.height = world_surface_height
-                        player.update_zoom_properties(zoom_level)
+                            zoom_level = max(0.8, min(zoom_level, 2.3))
+                            # ... (re-create surfaces logic) ...
+                            world_surface_width = int(SCREEN_WIDTH / zoom_level)
+                            world_surface_height = int(SCREEN_HEIGHT / zoom_level)
+                            world_surface = pygame.Surface((world_surface_width, world_surface_height))
+                            camera.width = camera.rect.width = world_surface_width
+                            camera.height = camera.rect.height = world_surface_height
+                            player.update_zoom_properties(zoom_level)
 
-        if not game_paused:
+        if game_active:
             player.update(dt, current_world, camera)
             camera.update(player)
 
-            if not building_manager.building_mode:
+            if not inventory_manager.get_selected_buildable():
                 mouse_state = pygame.mouse.get_pressed()
                 if mouse_state[0]:
                     new_bullet = player.shoot()
                     if new_bullet:
                         bullets.append(new_bullet)
 
+        if not game_paused:
             if wave_active and enemies_to_spawn_this_wave > 0 and world_manager.current_world_id == "overworld":
                 if current_time - spawn_timer > spawn_delay:
                     spawn_timer = current_time
@@ -251,6 +256,8 @@ def main(debug=False, performance=False):
             bullets = [bullet for bullet in bullets if bullet.lifetime > 0]
             enemy_list = [e for e in enemy_list if e.is_alive]
 
+
+        # --- DRAW LOGIC ---
         world_surface.fill("black")
 
         cam_chunk_x = camera.rect.center[0] // (CHUNK_SIZE * TILE_SIZE)
@@ -263,12 +270,12 @@ def main(debug=False, performance=False):
         for building in current_world.buildings_list:
             building.draw(world_surface, camera)
 
-        screen_mouse_pos = pygame.mouse.get_pos()
-        # Scale the mouse position down to match the world_surface
-        world_mouse_x = screen_mouse_pos[0] / zoom_level
-        world_mouse_y = screen_mouse_pos[1] / zoom_level
+        # screen_mouse_pos = pygame.mouse.get_pos()
+        # # Scale the mouse position down to match the world_surface
+        # world_mouse_x = screen_mouse_pos[0] / zoom_level
+        # world_mouse_y = screen_mouse_pos[1] / zoom_level
 
-        player.draw(world_surface, camera, (world_mouse_x, world_mouse_y))
+        player.draw(world_surface, camera, surface_mouse_pos)
 
         for bullet in bullets:
             bullet.draw(world_surface, camera)
@@ -276,12 +283,15 @@ def main(debug=False, performance=False):
         for enemy in enemy_list:
             enemy.draw(world_surface, camera)
 
-        building_manager.draw_ghost(world_surface, camera, world_mouse_pos, current_world.buildings_list)
+        inventory_manager.draw_ghost(world_surface, camera, world_mouse_pos)
 
         pygame.transform.scale(world_surface, (SCREEN_WIDTH, SCREEN_HEIGHT), screen)
         # screen.blit(world_surface, (0, 0))
 
-        building_manager.draw_ui(screen)
+        inventory_manager.draw_hotbar(screen)
+
+        if inventory_manager.is_open():
+            inventory_manager.draw_inventory(screen) # Draw full inventory
 
         if debug:
             player_pos_text = f"Player World Pos: ({int(player.rect.x)}, {int(player.rect.y)})"
@@ -313,14 +323,11 @@ def main(debug=False, performance=False):
             screen.blit(text7, (10, 190))
             screen.blit(text8, (10, 220))
 
-            build_text = f"Build Mode: {building_manager.building_mode}"
-            build_sel_text = f"Selected: {building_manager.selected_building_id}"
-
-            text9 = font.render(build_text, True, WHITE)
+            selected_slot = inventory_manager.inventory.get_selected_item_slot()
+            selected_item_name = selected_slot.item.name if selected_slot.item else "None"
+            build_sel_text = f"Selected: {selected_item_name} (Slot {inventory_manager.inventory.selected_slot_index + 1})"
             text10 = font.render(build_sel_text, True, WHITE)
-
-            screen.blit(text9, (10, 250))
-            screen.blit(text10, (10, 280))
+            screen.blit(text10, (10, 130))
 
             # if not wave_active and wave_number == 0:
             #     wave_prompt_text = font.render("Press 'N' to start the first wave!", True, WHITE)
