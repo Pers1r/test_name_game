@@ -5,6 +5,7 @@ import sys
 import os
 
 from World_engine.world import World
+from World_engine.world_manager import WorldManager
 from constants import (SCREEN_WIDTH, SCREEN_HEIGHT, ZOOM_LEVEL, TILE_SIZE, CHUNK_SIZE, WHITE)
 from assets_loader import *
 from World_engine import *
@@ -112,27 +113,30 @@ def main(debug=False, performance=False):
 
     build_image_surfaces = load_build_images(BUILD_IMAGES)
 
+    rocks_image_surfaces = load_rocks_images(ROCKS_IMAGES)
+
     player = Player(0, 0, debug=debug)
     camera = Camera(world_surface_width, world_surface_height)
 
     if debug:
-        world = World(seed=300, tile_dictionary=tile_dictionary)
+        seed = 300
     else:
-        world = World(seed=random.randint(100, 1000), tile_dictionary=tile_dictionary)
+        seed=random.randint(100, 1000)
 
-    camera.world = world
+    world_manager = WorldManager(seed=seed, tile_dictionary=tile_dictionary, rocks_images=rocks_image_surfaces)
+    camera.world = world_manager.get_current_world()
 
     for x in range(-START_CHUNKS_NUM, START_CHUNKS_NUM + 1):
         for y in range(-START_CHUNKS_NUM, START_CHUNKS_NUM + 1):
-            world.get_or_generate_chunk(x, y)
+            world_manager.get_current_world().get_or_generate_chunk(x, y)
 
     font = pygame.font.Font(None, 30)
 
     building_manager = BuildingManager(BUILD_DATA, tile_dictionary, build_image_surfaces)
+    building_manager.world_manager = world_manager
 
     bullets = []
     enemy_list = []
-    buildings_list = []
 
     wave_number = 0
     wave_active = False
@@ -157,6 +161,8 @@ def main(debug=False, performance=False):
         dt = clock.tick(FPS) / 1000.0
         current_time = pygame.time.get_ticks()
 
+        current_world = world_manager.get_current_world()
+
         mx, my = pygame.mouse.get_pos()
         screen_mouse_pos = (mx, my)
         surface_mouse_x = screen_mouse_pos[0] / zoom_level
@@ -171,16 +177,9 @@ def main(debug=False, performance=False):
             if event.type == pygame.QUIT:
                 RUNNING = False
 
-
-
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE: # Exit on ESCAPE
                     game_paused = not game_paused
-
-
-
-
-
 
             # --- Handle Paused State ---
             if game_paused:
@@ -195,18 +194,20 @@ def main(debug=False, performance=False):
 
             # --- Handle Running Game State ---
             else:
-                building_manager.handle_input(event, world, world_mouse_pos, buildings_list)
+                building_manager.handle_input(event, current_world, world_mouse_pos)
 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_n: # Press 'N' to start next wave
                         start_next_wave()
 
+                    if event.key == pygame.K_e:
+                        player.handle_interaction(world_manager, camera)
 
                 if event.type == pygame.MOUSEWHEEL:
                     if not building_manager.building_mode:
-                        if event.y > 0: # Scroll Up
+                        if event.y < 0: # Scroll Up
                             zoom_level -= 0.1
-                        elif event.y < 0: # Scroll Down
+                        elif event.y > 0: # Scroll Down
                             zoom_level += 0.1
 
                         zoom_level = max(0.8, min(zoom_level, 2.3))
@@ -219,7 +220,7 @@ def main(debug=False, performance=False):
                         player.update_zoom_properties(zoom_level)
 
         if not game_paused:
-            player.update(dt, world, camera)
+            player.update(dt, current_world, camera)
             camera.update(player)
 
             if not building_manager.building_mode:
@@ -229,26 +230,26 @@ def main(debug=False, performance=False):
                     if new_bullet:
                         bullets.append(new_bullet)
 
-                if wave_active and enemies_to_spawn_this_wave > 0:
-                    if current_time - spawn_timer > spawn_delay:
-                        spawn_timer = current_time
-                        spawn_enemy(player, world_surface_width, enemy_list)
-                        enemies_to_spawn_this_wave -= 1
+            if wave_active and enemies_to_spawn_this_wave > 0 and world_manager.current_world_id == "overworld":
+                if current_time - spawn_timer > spawn_delay:
+                    spawn_timer = current_time
+                    spawn_enemy(player, world_surface_width, enemy_list)
+                    enemies_to_spawn_this_wave -= 1
 
-                if wave_active and enemies_to_spawn_this_wave == 0 and not enemy_list:
-                    wave_active = False
-                    print(f"--- WAVE {wave_number} COMPLETE! ---")
-                    print("Press 'N' to start next wave.")
+            if wave_active and enemies_to_spawn_this_wave == 0 and not enemy_list:
+                wave_active = False
+                print(f"--- WAVE {wave_number} COMPLETE! ---")
+                print("Press 'N' to start next wave.")
 
 
-                for bullet in bullets:
-                    bullet.update(dt, world, enemy_list)
+            for bullet in bullets:
+                bullet.update(dt, current_world, enemy_list)
 
-                for enemy in enemy_list:
-                    enemy.update(dt, player, world, enemy_list)
+            for enemy in enemy_list:
+                enemy.update(dt, player, current_world, enemy_list)
 
-                bullets = [bullet for bullet in bullets if bullet.lifetime > 0]
-                enemy_list = [e for e in enemy_list if e.is_alive]
+            bullets = [bullet for bullet in bullets if bullet.lifetime > 0]
+            enemy_list = [e for e in enemy_list if e.is_alive]
 
         world_surface.fill("black")
 
@@ -256,16 +257,16 @@ def main(debug=False, performance=False):
         cam_chunk_y = camera.rect.center[1] // (CHUNK_SIZE * TILE_SIZE)
         for y in range(cam_chunk_y - 3, cam_chunk_y + 3):
             for x in range(cam_chunk_x - 3, cam_chunk_x + 3):
-                chunk_to_draw = world.get_or_generate_chunk(x, y)
+                chunk_to_draw = current_world.get_or_generate_chunk(x, y)
                 chunk_to_draw.draw(world_surface, camera)
 
-        for building in buildings_list:
+        for building in current_world.buildings_list:
             building.draw(world_surface, camera)
 
         screen_mouse_pos = pygame.mouse.get_pos()
         # Scale the mouse position down to match the world_surface
-        world_mouse_x = screen_mouse_pos[0] / ZOOM_LEVEL
-        world_mouse_y = screen_mouse_pos[1] / ZOOM_LEVEL
+        world_mouse_x = screen_mouse_pos[0] / zoom_level
+        world_mouse_y = screen_mouse_pos[1] / zoom_level
 
         player.draw(world_surface, camera, (world_mouse_x, world_mouse_y))
 
@@ -275,7 +276,7 @@ def main(debug=False, performance=False):
         for enemy in enemy_list:
             enemy.draw(world_surface, camera)
 
-        building_manager.draw_ghost(world_surface, camera, world_mouse_pos, buildings_list)
+        building_manager.draw_ghost(world_surface, camera, world_mouse_pos, current_world.buildings_list)
 
         pygame.transform.scale(world_surface, (SCREEN_WIDTH, SCREEN_HEIGHT), screen)
         # screen.blit(world_surface, (0, 0))
@@ -292,6 +293,8 @@ def main(debug=False, performance=False):
             wave_text = f"Wave: {wave_number} (Active: {wave_active})"
             spawning_text = f"To Spawn: {enemies_to_spawn_this_wave}"
 
+            world_text = f"World: {world_manager.current_world_id}"
+
             text1 = font.render(player_pos_text, True, WHITE)
             text2 = font.render(cam_pos_text, True, WHITE)
             text3 = font.render(fps_text, True, WHITE)
@@ -299,6 +302,7 @@ def main(debug=False, performance=False):
             text5 = font.render(enemy_text, True, WHITE)
             text6 = font.render(wave_text, True, WHITE)
             text7 = font.render(spawning_text, True, WHITE)
+            text8 = font.render(world_text, True, WHITE) # For new text
 
             screen.blit(text1, (10, 10))
             screen.blit(text2, (10, 40))
@@ -307,6 +311,7 @@ def main(debug=False, performance=False):
             screen.blit(text5, (10, 130))
             screen.blit(text6, (10, 160))
             screen.blit(text7, (10, 190))
+            screen.blit(text8, (10, 220))
 
             build_text = f"Build Mode: {building_manager.building_mode}"
             build_sel_text = f"Selected: {building_manager.selected_building_id}"

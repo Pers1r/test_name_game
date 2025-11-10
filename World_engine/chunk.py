@@ -5,10 +5,11 @@ from constants import *
 from .tile import *
 
 class Chunk:
-    def __init__(self, chunk_x, chunk_y, tile_dictionary):
+    def __init__(self, chunk_x, chunk_y, tile_dictionary, rocks_images):
         self.chunk_x = chunk_x
         self.chunk_y = chunk_y
         self.tile_dictionary = tile_dictionary
+        self.rocks_images = rocks_images
 
         self.chunk = [[None for _ in range(CHUNK_SIZE)] for _ in range(CHUNK_SIZE)]
 
@@ -53,6 +54,17 @@ class Chunk:
         elif base_type == "rock":
             return "rock_default"
 
+        elif base_type == "cave_stone":
+            return "cave_stone"
+        elif base_type == "cave_ground":
+            return "cave_ground"
+
+        elif base_type in [
+            "cave_brown_iron", "cave_coal", "cave_diamond",
+            "cave_gold", "cave_iron", "cave_silver", "cave_ruby"
+        ]:
+            return base_type
+
         # Default fallback
         return "grass_default_1"
 
@@ -65,9 +77,19 @@ class Chunk:
 
                 base_type = world.get_base_type_at(global_tile_x, global_tile_y)
 
+                if world.world_type == "cave" and base_type == "cave_stone":
+                    ore_type = world.get_ore_type_at(global_tile_x, global_tile_y)
+                    if ore_type:
+                        base_type = ore_type
+
                 tile_name = self.get_tile_name_by_context(world, base_type, global_tile_x, global_tile_y)
 
-                tile_image = self.tile_dictionary.get(tile_name)
+                if tile_name in self.rocks_images:
+                    tile_image = self.rocks_images.get(tile_name)
+                elif 'rock' in tile_name:
+                    tile_image = self.rocks_images.get("main_rock")
+                else:
+                    tile_image = self.tile_dictionary.get(tile_name)
 
                 if not tile_image:
                     if "water" in tile_name: # e.g., "water_grass_99" doesn't exist
@@ -75,7 +97,10 @@ class Chunk:
                     elif "grass" in tile_name:
                         tile_image = self.tile_dictionary.get("grass_default_1")
                     else:
+                        # Fallback for rock if main_rock failed to load
                         tile_image = self.tile_dictionary.get("rock_default")
+                        if not tile_name in self.rocks_images: # Avoid spamming for cave tiles
+                            print(f"Warning: could not find tile image for '{tile_name}'. Using fallback.")
 
                 world_x = global_tile_x * TILE_SIZE
                 world_y = global_tile_y * TILE_SIZE
@@ -86,11 +111,14 @@ class Chunk:
                 local_y = row * TILE_SIZE
                 self.surface.blit(tile_image, (local_x, local_y))
 
-    def update_tile_at(self, local_x, local_y, new_tile_name, tile_dictionary):
-        new_tile_image = tile_dictionary.get(new_tile_name)
+    def update_tile_at(self, local_x, local_y, new_tile_name):
+        if new_tile_name in self.rocks_images:
+            new_tile_image = self.rocks_images.get(new_tile_name)
+        else:
+            new_tile_image = self.tile_dictionary.get(new_tile_name)
         if not new_tile_image:
             print(f"Error: Tile name '{new_tile_name}' not in dictionary.")
-            new_tile_image = tile_dictionary.get("rock_default") # Fallback
+            new_tile_image = self.tile_dictionary.get("rock_default") # Fallback
             new_tile_name = "rock_default"
 
         world_x = (self.chunk_x * CHUNK_SIZE + local_x) * TILE_SIZE

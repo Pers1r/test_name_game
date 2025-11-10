@@ -20,8 +20,8 @@ class Building:
         self.world_rect = pygame.Rect(
             grid_x * TILE_SIZE,
             grid_y * TILE_SIZE,
-            self.game_size,
-            self.game_size
+            self.game_size *TILE_SIZE,
+            self.game_size *TILE_SIZE
         )
 
     def draw(self, surface, camera):

@@ -1,12 +1,16 @@
 import pygame
+
+from World_engine.world_manager import WorldManager
 from constants import *
 from Building.building import Building
 
 class BuildingManager:
-    def __init__(self, build_data, tile_dictionary, bild_image_surfaces):
+    def __init__(self, build_data, tile_dictionary, build_image_surfaces):
         self.build_data = build_data
         self.tile_dictionary = tile_dictionary
-        self.bild_image_surfaces = bild_image_surfaces
+        self.build_image_surfaces = build_image_surfaces
+
+        self.world_manager = None
 
         self.building_mode = False
         self.selected_building_id = None
@@ -26,7 +30,7 @@ class BuildingManager:
         for building_id, data in self.build_data.items():
             button_rect = pygame.Rect(
                 x_pos,
-                SCREEN_HEIGHT - self.menu_height + self.button_size,
+                SCREEN_HEIGHT - self.menu_height + self.button_padding,
                 self.button_size,
                 self.button_size
             )
@@ -53,7 +57,7 @@ class BuildingManager:
         data = self.build_data[self.selected_building_id]
         image_id = data["image_id"]
 
-        image = self.tile_dictionary.get(image_id)
+        image = self.build_image_surfaces.get(image_id)
         if not image:
             size = data["game_size"] * TILE_SIZE
             image = pygame.Surface((size, size))
@@ -62,7 +66,7 @@ class BuildingManager:
         self.ghost_surface = image.copy()
         self.ghost_surface.set_alpha(150)
 
-    def handle_input(self, event, world, world_mouse_pos, buildings_list):
+    def handle_input(self, event, world, world_mouse_pos):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_b:
                 self.toggle_mode()
@@ -81,7 +85,7 @@ class BuildingManager:
                         return
 
             elif self.selected_building_id and event.button == 1:
-                self.try_place_building(world, world_mouse_pos, buildings_list)
+                self.try_place_building(world, world_mouse_pos, world.buildings_list)
 
     def try_place_building(self, world, world_mouse_pos, buildings_list):
         data = self.build_data[self.selected_building_id]
@@ -102,17 +106,68 @@ class BuildingManager:
                     break
 
         if can_build:
-            for y in range(grid_y, grid_y + size):
-                for x in range(grid_x, grid_x + size):
-                    world.set_tile(x, y, "rock_default")
+            temp_rect = pygame.Rect(grid_x * TILE_SIZE, grid_y * TILE_SIZE, size * TILE_SIZE, size * TILE_SIZE)
+            for b in buildings_list:
+                if temp_rect.colliderect(b.world_rect):
+                    can_build = False
+                    break
 
-            image_id = data["image_id"]
-            image = self.bild_image_surfaces[image_id]
+        if can_build and self.selected_building_id == "elevator_down":
+            if self.world_manager.get_elevator_link(grid_x, grid_y):
+                print("Cannot build: An elevator link already exists here.")
+                can_build = False
 
-            new_building = Building(grid_x, grid_y, image_id, image)
-            buildings_list.append(new_building)
+        if can_build:
+            if self.selected_building_id == "elevator_down":
+                if not self.world_manager:
+                    print("ERROR: BuildingManager needs WorldManager!")
+                    return
 
-            print(f"Placed {self.selected_building_id} at ({grid_x}, {grid_y})")
+                overworld_world = self.world_manager.get_world("overworld")
+                cave_world = self.world_manager.get_world("cave")
+
+                if not overworld_world or not cave_world:
+                    print("ERROR: Missing overworld or cave world!")
+                    return
+
+                if world.world_type == "overworld":
+                    image = self.build_image_surfaces["elevator_down"]
+                    new_building = Building(grid_x, grid_y, "elevator_down", image)
+                    buildings_list.append(new_building)
+                    world.set_tile(grid_x, grid_y, "elevator_up")
+
+                    print(f"Carving cave area at ({grid_x-1}, {grid_y-1}) to ({grid_x+1}, {grid_y+1})")
+                    for y in range(grid_y - 1, grid_y + 2):
+                        for x in range(grid_x - 1, grid_x + 2):
+                            cave_world.set_tile(x, y, "cave_ground")
+                    cave_world.set_tile(grid_x, grid_y, "elevator_up")
+
+                elif world.world_type == "cave":
+                    world.set_tile(grid_x, grid_y, "elevator_up")
+
+                    image = self.build_image_surfaces["elevator_down"]
+                    new_building = Building(grid_x, grid_y, "elevator_down", image)
+                    overworld_world.buildings_list.append(new_building) # Add to overworld list
+                    overworld_world.set_tile(grid_x, grid_y, "elevator_up") # Set tile under it
+
+                self.world_manager.create_elevator_link(
+                    (grid_x, grid_y), # overworld pos
+                    (grid_x, grid_y)  # cave pos
+                )
+                print(f"Placed elevator link at ({grid_x}, {grid_y})")
+
+            else:
+                # Set tiles under building
+                for y in range(grid_y, grid_y + size):
+                    for x in range(grid_x, grid_x + size):
+                        world.set_tile(x, y, "rock_default")
+
+                # Create and add building
+                image_id = data["image_id"]
+                image = self.build_image_surfaces[image_id]
+                new_building = Building(grid_x, grid_y, image_id, image)
+                buildings_list.append(new_building)
+                print(f"Placed {self.selected_building_id} at ({grid_x}, {grid_y})")
         else:
             print("Cannot build here. Space is not free.")
 
@@ -133,7 +188,7 @@ class BuildingManager:
 
             image_id = data["image_id"]
             if image_id:
-                image = self.bild_image_surfaces.get(image_id)
+                image = self.build_image_surfaces.get(image_id)
                 if image:
                     scaled_image = pygame.transform.scale(image, rect.size)
                     screen.blit(scaled_image, rect.topleft)
@@ -171,6 +226,8 @@ class BuildingManager:
                 if not can_build:
                     break
 
+        ghost_rect = self.ghost_surface.get_rect(topleft=ghost_world_pos)
+
         if can_build:
             ghost_rect = self.ghost_surface.get_rect(topleft=ghost_world_pos)
             for b in buildings_list:
@@ -179,7 +236,7 @@ class BuildingManager:
                     break
 
         tint = (255, 255, 255, 150) if can_build else (255, 50, 50, 150)
-        ghost_rect = self.ghost_surface.get_rect(topleft=ghost_world_pos)
+
         screen_rect = camera.set_target(ghost_rect)
 
         tmp_surf = self.ghost_surface.copy()

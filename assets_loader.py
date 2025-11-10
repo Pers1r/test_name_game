@@ -159,7 +159,73 @@ BUILD_IMAGES = {
         'path': 'assets/Tiles/table.png',
         'actual_size': 128,
         'game_size': 1,
-    }
+    },
+    'elevator_down': {
+        'path': 'assets/Tiles/elevator_down.png',
+        'actual_size': 64,
+        'game_size': 1,
+    },
+
+}
+
+# rocks and ores
+ROCKS_IMAGES = {
+    'main_rock': {
+        'path': 'assets/Tiles/stone.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'elevator_up': {
+        'path': 'assets/Tiles/elevator_up.png',
+        'actual_size': 64,
+        'game_size': 1,
+    },
+    'cave_stone' : {
+        'path': 'assets/Tiles/greystone.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'cave_ground' : {
+        'path': 'assets/Tiles/cave_ground.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'cave_brown_iron' : {
+        'path': 'assets/Tiles/stone_browniron_alt.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'cave_coal' : {
+        'path': 'assets/Tiles/stone_coal_alt.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'cave_diamond' : {
+        'path': 'assets/Tiles/stone_diamond_alt.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'cave_gold' : {
+        'path': 'assets/Tiles/stone_gold_alt.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'cave_iron' : {
+        'path': 'assets/Tiles/stone_iron_alt.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'cave_silver' : {
+        'path': 'assets/Tiles/stone_silver_alt.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    'cave_ruby' : {
+        'path': 'assets/Tiles/greystone_ruby_alt.png',
+        'actual_size': 128,
+        'game_size': 1,
+    },
+    # ...
 }
 
 def load_tiles_from_atlas(tileset_image, atlas_definition):
@@ -193,5 +259,36 @@ def load_build_images(build_images_data):
             print(f"Loaded building image: {image_id}")
         except Exception as e:
             print(f"Error loading building image '{image_id}' at path '{data['path']}': {e}")
+
+    return loaded_surfaces
+
+def load_rocks_images(rocks_images_data):
+    """
+    Loads and scales rock/ore images from the ROCKS_IMAGES dictionary.
+    """
+    loaded_surfaces = {}
+
+    for image_id, data in rocks_images_data.items():
+        try:
+            image = pygame.image.load(data['path']).convert_alpha()
+
+            # Calculate the target size based on game_size
+            target_pixel_size = data['game_size'] * TILE_SIZE
+
+            # Scale the image to its final in-game pixel size
+            scaled_image = pygame.transform.scale(
+                image,
+                (target_pixel_size, target_pixel_size)
+            )
+
+            loaded_surfaces[image_id] = scaled_image
+            print(f"Loaded rock/ore image: {image_id}")
+
+        except Exception as e:
+            print(f"Error loading rock/ore image '{image_id}' at path '{data['path']}': {e}")
+            # Add a fallback placeholder
+            placeholder = pygame.Surface((target_pixel_size, target_pixel_size))
+            placeholder.fill((255, 0, 255)) # Bright pink error color
+            loaded_surfaces[image_id] = placeholder
 
     return loaded_surfaces

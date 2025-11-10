@@ -99,6 +99,31 @@ class Player(pygame.sprite.Sprite):
 
                 self.pos.y = self.rect.centery
 
+    def handle_interaction(self, world_manager, camera):
+        """
+        Called when the player presses the 'E' key.
+        Checks for interactable objects (buildings or tiles)
+        at the player's position.
+        """
+        # Find player's grid position
+        grid_x = int(self.pos.x // TILE_SIZE)
+        grid_y = int(self.pos.y // TILE_SIZE)
+
+        current_world = world_manager.get_current_world()
+        for building in current_world.buildings_list:
+            if building.image_id == "elevator_down" and building.world_rect.colliderect(self.rect):
+                link = world_manager.get_elevator_link(building.world_rect.x // TILE_SIZE, building.world_rect.y // TILE_SIZE)
+                if link:
+                    target_world_id, target_x, target_y = link
+                    world_manager.transition_player(self, camera, target_world_id, target_x, target_y)
+                    return
+
+        link = world_manager.get_elevator_link(grid_x, grid_y)
+        if link:
+            target_world_id, target_x, target_y = link
+            world_manager.transition_player(self, camera, target_world_id, target_x, target_y)
+            return
+
     def draw(self, surface, camera, mouse_pos):
         # 1. Find stable screen rectangle
         screen_rect = camera.set_target(self.rect)

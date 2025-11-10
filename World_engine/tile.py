@@ -1,6 +1,4 @@
 import pygame
-
-
 from constants import *
 
 
@@ -37,3 +35,24 @@ class Tile:
             self.is_walkable = False
             self.is_bullet_penetrable = False
             self._is_buildable = False
+
+        elif self.tile_type in [
+            "cave_stone", "cave_brown_iron", "cave_coal", "cave_diamond",
+            "cave_gold", "cave_iron", "cave_silver", "cave_ruby"
+        ]:
+            self.color = "grey"
+            self.is_walkable = False
+            self.is_bullet_penetrable = False
+            self._is_buildable = False
+
+        elif self.tile_type == "cave_ground":
+            self.color = "brown"
+            self.is_walkable = True
+            self.is_bullet_penetrable = True
+            self._is_buildable = True # Allow building in caves
+
+        elif self.tile_type == "elevator_up":
+            self.color = "cyan"
+            self.is_walkable = True # Can stand on it
+            self.is_bullet_penetrable = True
+            self._is_buildable = False # Cannot build on top of it

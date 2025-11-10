@@ -17,4 +17,11 @@ BUILD_DATA = {
         "image_id": "work_branch",
         "game_size": 1
     },
+    "elevator_down": {
+        "id": "elevator_down",
+        "name": "Elevator",
+        "keybind": pygame.K_3,
+        "image_id": "elevator_down",
+        "game_size": 1
+    },
 }
