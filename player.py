@@ -22,7 +22,7 @@ class Player(pygame.sprite.Sprite):
 
         self.update_zoom_properties(ZOOM_LEVEL)
 
-        self.shoot_delay = PLATER_SHOOT_DELAY
+        # self.shoot_delay = PLATER_SHOOT_DELAY
         self.last_shoot_time = 0
 
         self.aim_offset = 2 / ZOOM_LEVEL
@@ -99,30 +99,30 @@ class Player(pygame.sprite.Sprite):
 
                 self.pos.y = self.rect.centery
 
-    def handle_interaction(self, world_manager, camera):
-        """
-        Called when the player presses the 'E' key.
-        Checks for interactable objects (buildings or tiles)
-        at the player's position.
-        """
-        # Find player's grid position
-        grid_x = int(self.pos.x // TILE_SIZE)
-        grid_y = int(self.pos.y // TILE_SIZE)
-
-        current_world = world_manager.get_current_world()
-        for building in current_world.buildings_list:
-            if building.image_id == "elevator_down" and building.world_rect.colliderect(self.rect):
-                link = world_manager.get_elevator_link(building.world_rect.x // TILE_SIZE, building.world_rect.y // TILE_SIZE)
-                if link:
-                    target_world_id, target_x, target_y = link
-                    world_manager.transition_player(self, camera, target_world_id, target_x, target_y)
-                    return
-
-        link = world_manager.get_elevator_link(grid_x, grid_y)
-        if link:
-            target_world_id, target_x, target_y = link
-            world_manager.transition_player(self, camera, target_world_id, target_x, target_y)
-            return
+    # def handle_interaction(self, world_manager, camera):
+    #     """
+    #     Called when the player presses the 'E' key.
+    #     Checks for interactable objects (buildings or tiles)
+    #     at the player's position.
+    #     """
+    #     # Find player's grid position
+    #     grid_x = int(self.pos.x // TILE_SIZE)
+    #     grid_y = int(self.pos.y // TILE_SIZE)
+    #
+    #     current_world = world_manager.get_current_world()
+    #     for building in current_world.buildings_list:
+    #         if building.image_id == "elevator_down" and building.world_rect.colliderect(self.rect):
+    #             link = world_manager.get_elevator_link(building.world_rect.x // TILE_SIZE, building.world_rect.y // TILE_SIZE)
+    #             if link:
+    #                 target_world_id, target_x, target_y = link
+    #                 world_manager.transition_player(self, camera, target_world_id, target_x, target_y)
+    #                 return
+    #
+    #     link = world_manager.get_elevator_link(grid_x, grid_y)
+    #     if link:
+    #         target_world_id, target_x, target_y = link
+    #         world_manager.transition_player(self, camera, target_world_id, target_x, target_y)
+    #         return
 
     def draw(self, surface, camera, mouse_pos):
         # 1. Find stable screen rectangle
@@ -160,16 +160,19 @@ class Player(pygame.sprite.Sprite):
         if self.debug:
             pygame.draw.rect(surface, "purple", screen_rect, width=1)
 
-    def shoot(self):
+    def shoot(self, tool_item):
+        """
+        Shoots a bullet using the stats from the provided tool_item.
+        """
         current_time = pygame.time.get_ticks()
 
-        if current_time - self.last_shoot_time > self.shoot_delay:
+        if current_time - self.last_shoot_time > tool_item.shoot_delay:
             self.last_shoot_time = current_time
             orbit_dist = self.radius + self.aim_offset + (self.aim_size / 2) + 5
 
             start_x = self.rect.centerx + math.cos(self.angle) * orbit_dist
             start_y = self.rect.centery + math.sin(self.angle) * orbit_dist
 
-            new_bullet = Bullet(start_x, start_y, self.angle)
+            new_bullet = Bullet(start_x, start_y, self.angle, tool_item.enemy_damage, tool_item.block_damage)
             return new_bullet
         return None

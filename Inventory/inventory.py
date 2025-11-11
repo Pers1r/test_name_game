@@ -153,4 +153,14 @@ class Inventory:
                     qty_rect = qty_text.get_rect(bottomright=(slot_rect.right - 2, slot_rect.bottom - 2))
                     screen.blit(qty_text, qty_rect)
 
+    def remove_item(self, slot_index, quantity):
+        """Removes a specific quantity from an item slot."""
+        slot = self.slots[slot_index]
+        if slot.item:
+            slot.quantity -= quantity
+            if slot.quantity <= 0:
+                slot.clear()
+            return True
+        return False
+
 

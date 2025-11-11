@@ -19,6 +19,10 @@ from Building.building import Building
 from Inventory.inventory_manager import InventoryManager
 from Inventory.item import BuildableItem
 
+from Inventory.item import ToolItem, BuildableItem
+from Crafting.crafting_manager import CraftingManager
+from Entities.dropped_item import DroppedItem
+
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
@@ -84,6 +88,43 @@ def draw_pause_menu(screen, font):
         "quit": quit_btn_rect
     }
 
+def handle_interaction(player, camera, world_mouse_pos, world_manager, crafting_manager):
+    """
+    Handles all 'F' key interactions (elevators, workbenches, etc.)
+    """
+    current_world = world_manager.get_current_world()
+
+    grid_x = int(world_mouse_pos[0] // TILE_SIZE)
+    grid_y = int(world_mouse_pos[1] // TILE_SIZE)
+
+    for building in current_world.buildings_list:
+        if building.image_id == "work_branch" and building.world_rect.collidepoint(world_mouse_pos):
+            # Check proximity: is player close enough to the building?
+            # Use an inflated player rect for a larger interaction range
+            interaction_rect = player.rect.inflate(TILE_SIZE * 2, TILE_SIZE * 2)
+            if interaction_rect.colliderect(building.world_rect):
+                crafting_manager.open_workbench(building)
+                return # Interaction handled
+
+    player_grid_x = int(player.pos.x // TILE_SIZE)
+    player_grid_y = int(player.pos.y // TILE_SIZE)
+
+    for building in current_world.buildings_list:
+        if building.image_id == "elevator_down" and building.world_rect.colliderect(player.rect):
+            link = world_manager.get_elevator_link(building.world_rect.x // TILE_SIZE, building.world_rect.y // TILE_SIZE)
+            if link:
+                target_world_id, target_x, target_y = link
+                world_manager.transition_player(player, camera, target_world_id, target_x, target_y)
+                return # Interaction handled
+
+    link = world_manager.get_elevator_link(player_grid_x, player_grid_y)
+    if link:
+        target_world_id, target_x, target_y = link
+        world_manager.transition_player(player, camera, target_world_id, target_x, target_y)
+        return # Interaction handled
+
+    print("Nothing to interact with.")
+
 def main(debug=False, performance=False):
     pygame.init()
     clock = pygame.time.Clock()
@@ -135,9 +176,11 @@ def main(debug=False, performance=False):
 
     inventory_manager = InventoryManager(world_manager, build_image_surfaces)
     inventory_manager.spawn_starting_items()
+    crafting_manager = CraftingManager(inventory_manager)
 
     bullets = []
     enemy_list = []
+    dropped_items_list = []
 
     wave_number = 0
     wave_active = False
@@ -174,7 +217,11 @@ def main(debug=False, performance=False):
         world_mouse_y = camera.rect.y + surface_mouse_y
         world_mouse_pos = (world_mouse_x, world_mouse_y)
 
-        game_active = not game_paused and not inventory_manager.is_open()
+        game_active = (
+            not game_paused
+            and not inventory_manager.is_open()
+            and not crafting_manager.is_open
+        )
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -197,18 +244,24 @@ def main(debug=False, performance=False):
 
             # --- Handle Running Game State ---
             else:
-                inventory_manager.handle_input(event, current_world, world_mouse_pos)
+                if crafting_manager.is_open:
+                    crafting_manager.handle_input(event)
 
-                if game_active:
+                elif inventory_manager.is_open():
+                    inventory_manager.handle_input(event, current_world, world_mouse_pos)
+
+                else:
+                    inventory_manager.handle_input(event, current_world, world_mouse_pos)
+
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_n: # Press 'N' to start next wave
                             start_next_wave()
 
                         if event.key == pygame.K_f:
-                            player.handle_interaction(world_manager, camera)
+                            handle_interaction(player, camera, world_mouse_pos, world_manager, crafting_manager)
 
                     if event.type == pygame.MOUSEWHEEL:
-                        if not building_manager.building_mode:
+                        if not inventory_manager.is_open():
                             if event.y < 0: # Scroll Up
                                 zoom_level -= 0.1
                             elif event.y > 0: # Scroll Down
@@ -227,10 +280,12 @@ def main(debug=False, performance=False):
             player.update(dt, current_world, camera)
             camera.update(player)
 
-            if not inventory_manager.get_selected_buildable():
-                mouse_state = pygame.mouse.get_pressed()
-                if mouse_state[0]:
-                    new_bullet = player.shoot()
+            mouse_state = pygame.mouse.get_pressed()
+            if mouse_state[0]:
+                selected_tool = inventory_manager.get_selected_tool_item()
+                # Can only shoot if a tool is selected AND a buildable is NOT
+                if selected_tool and not inventory_manager.get_selected_buildable():
+                    new_bullet = player.shoot(selected_tool)
                     if new_bullet:
                         bullets.append(new_bullet)
 
@@ -248,13 +303,19 @@ def main(debug=False, performance=False):
 
 
             for bullet in bullets:
-                bullet.update(dt, current_world, enemy_list)
+                bullet.update(dt, current_world, enemy_list, dropped_items_list, inventory_manager.item_factory)
 
             for enemy in enemy_list:
                 enemy.update(dt, player, current_world, enemy_list)
 
+            for item in dropped_items_list:
+                item.update()
+                if game_active:
+                    item.check_pickup(player, inventory_manager.inventory)
+
             bullets = [bullet for bullet in bullets if bullet.lifetime > 0]
             enemy_list = [e for e in enemy_list if e.is_alive]
+            dropped_items_list = [i for i in dropped_items_list if i.is_alive]
 
 
         # --- DRAW LOGIC ---
@@ -283,6 +344,9 @@ def main(debug=False, performance=False):
         for enemy in enemy_list:
             enemy.draw(world_surface, camera)
 
+        for item in dropped_items_list:
+            item.draw(world_surface, camera)
+
         inventory_manager.draw_ghost(world_surface, camera, world_mouse_pos)
 
         pygame.transform.scale(world_surface, (SCREEN_WIDTH, SCREEN_HEIGHT), screen)
@@ -292,6 +356,9 @@ def main(debug=False, performance=False):
 
         if inventory_manager.is_open():
             inventory_manager.draw_inventory(screen) # Draw full inventory
+
+        if crafting_manager.is_open:
+            crafting_manager.draw(screen)
 
         if debug:
             player_pos_text = f"Player World Pos: ({int(player.rect.x)}, {int(player.rect.y)})"
@@ -344,4 +411,4 @@ def main(debug=False, performance=False):
 
 
 if __name__ == "__main__":
-    main(debug=True, performance=False)
+    main(debug=True, performance=True)

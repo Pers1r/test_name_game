@@ -165,7 +165,43 @@ BUILD_IMAGES = {
         'actual_size': 64,
         'game_size': 1,
     },
-
+    'default_tool_icon': {
+        'path': 'assets/Items/sword_iron.png', # PLACEHOLDER! Use a real tool icon path
+        'actual_size': 128,
+        'game_size': 1, # This is ignored for icons, but good to have
+    },
+    'cave_stone_icon': {
+        'path': 'assets/Tiles/rock.png',
+        'actual_size': 128, 'game_size': 1,
+    },
+    'cave_coal_icon': {
+        'path': 'assets/ores/ore_coal.png',
+        'actual_size': 128, 'game_size': 1,
+    },
+    'cave_iron_icon': {
+        'path': 'assets/ores/ore_iron.png',
+        'actual_size': 128, 'game_size': 1,
+    },
+    'cave_brown_iron_icon': {
+        'path': 'assets/ores/ore_ironAlt.png',
+        'actual_size': 128, 'game_size': 1,
+    },
+    'cave_silver_icon': {
+        'path': 'assets/ores/ore_silver.png',
+        'actual_size': 128, 'game_size': 1,
+    },
+    'cave_gold_icon': {
+        'path': 'assets/ores/ore_gold.png',
+        'actual_size': 128, 'game_size': 1,
+    },
+    'cave_ruby_icon': {
+        'path': 'assets/ores/ore_ruby.png',
+        'actual_size': 128, 'game_size': 1,
+    },
+    'cave_diamond_icon': {
+        'path': 'assets/Tiles/stone_diamond_alt.png',
+        'actual_size': 128, 'game_size': 1,
+    },
 }
 
 # rocks and ores

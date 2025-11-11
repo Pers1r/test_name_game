@@ -1,8 +1,10 @@
 import pygame
+from numpy.core.shape_base import block
+
 from constants import *
 from Building.building import Building
 from .inventory import Inventory
-from .item import Item, BuildableItem
+from .item import Item, BuildableItem, ToolItem
 from .item_data import ITEM_DATA
 
 
@@ -40,6 +42,19 @@ class InventoryManager:
                     build_image_id=b_data["build_image_id"],
                     game_size=b_data["game_size"],
                 )
+
+            elif data["type"] == "tool":
+                t_data = data["tool_data"]
+                self.item_factory[item_id] = ToolItem(
+                    item_id=item_id,
+                    name=data["name"],
+                    image=icon_image,
+                    description=data["description"],
+                    shoot_delay=t_data["shoot_delay"],
+                    enemy_damage=t_data["enemy_damage"],
+                    block_damage=t_data["block_damage"]
+                )
+
             else:
                 self.item_factory[item_id] = Item(
                     item_id=item_id,
@@ -54,7 +69,9 @@ class InventoryManager:
         """Adds the default items to the player's inventory."""
         crystal = self.item_factory.get("main_crystal")
         bench = self.item_factory.get("work_branch")
+        tool = self.item_factory.get("default_tool")
 
+        if tool: self.inventory.add_item(tool, 1)
         if crystal: self.inventory.add_item(crystal, 1)
         if bench: self.inventory.add_item(bench, 1)
 
@@ -76,6 +93,18 @@ class InventoryManager:
 
         slot = self.inventory.get_selected_item_slot()
         if slot.item and isinstance(slot.item, BuildableItem):
+            return slot.item
+        return None
+
+    def get_selected_tool_item(self):
+        """
+        Checks if the currently selected hotbar item is a ToolItem.
+        """
+        if self.is_open():
+            return None # Can't use tools while inventory is open
+
+        slot = self.inventory.get_selected_item_slot()
+        if slot.item and isinstance(slot.item, ToolItem):
             return slot.item
         return None
 
@@ -169,8 +198,8 @@ class InventoryManager:
                 world.buildings_list.append(new_building)
                 print(f"Placed {item.name} at ({grid_x}, {grid_y})")
 
-            # TODO: Consume the item from inventory
-            # self.inventory.remove_item(self.inventory.selected_slot_index, 1)
+
+            self.inventory.remove_item(self.inventory.selected_slot_index, 1)
 
         elif not can_build:
             print("Cannot build here. Space is not free or link exists.")

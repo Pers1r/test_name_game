@@ -130,5 +130,26 @@ class World:
         except Exception as e:
             print(f"Error setting tile: {e}")
 
+    def damage_tile(self, grid_x, grid_y, damage):
+        """
+        Applies damage to a tile. If the tile is destroyed,
+        it sets it to cave_ground and returns the item ID to drop.
+        """
+        tile = self.get_tile_at_grid_pos(grid_x, grid_y)
+
+        if tile and tile.health != float('inf'):
+            tile.health -= damage
+            # print(f"Tile at ({grid_x}, {grid_y}) health: {tile.health}") # Debug
+
+            if tile.health <= 0:
+                drop_id = tile.drop_item_id
+
+                # Replace destroyed block with cave ground
+                self.set_tile(grid_x, grid_y, "cave_ground")
+
+                return drop_id # Return what to drop
+
+        return None # Nothing was destroyed
+
 
 
