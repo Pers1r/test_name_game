@@ -30,6 +30,7 @@ class Inventory:
         self.slots = [ItemSlot() for _ in range(self.full_size)]
         self.is_open = False
         self.selected_slot_index = 0
+        self.max_stack = 100
 
         self.slot_size = 56
         self.slot_padding = 8
@@ -46,18 +47,37 @@ class Inventory:
         """Returns the ItemSlot object currently selected on the hotbar."""
         return self.slots[self.selected_slot_index]
 
-    def add_item(self, item, quantity=1):
+    def add_item(self, item_to_add, quantity=1):
         """
-        Adds an item to the first available slot.
-        TODO: Implement item stacking.
+        Adds an item to the inventory, stacking up to self.max_stack.
+        Returns True if the item was fully added, False otherwise.
         """
-        for i in range(self.full_size):
-            if self.slots[i].item is None:
-                self.slots[i].set_item(item, quantity)
-                print(f"Added {item.name} to inventory.")
-                return True
-        print(f"Failed to add {item.name}: Inventory full.")
-        return False
+        item_id = item_to_add.item_id
+        for slot in self.slots:
+            if slot.item and slot.item.item_id == item_id and slot.quantity < self.max_stack:
+                space_available = self.max_stack - slot.quantity
+                add_amount = min(quantity, space_available)
+
+                slot.add_quantity(add_amount)
+                quantity -= add_amount
+                if quantity <= 0:
+                    return True
+
+        for slot in self.slots:
+            if slot.item is None:
+                add_amount = min(quantity, self.max_stack)
+                slot.set_item(item_to_add, add_amount)
+                quantity -= add_amount
+
+                if quantity <= 0:
+                    return True
+
+        if quantity > 0:
+            print(f"Inventory full. Could not add {quantity} of {item_id}")
+            return False
+
+        return True
+
 
     def handle_input(self, event):
         """Handles key presses for selecting hotbar slots."""

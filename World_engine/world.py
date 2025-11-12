@@ -15,6 +15,10 @@ class World:
         self.world_type = world_type
 
         self.buildings_list = []
+        self.dropped_items_list = []
+
+        self.bullets = []
+        self.enemy_list = []
 
     def get_base_type_at(self, global_x, global_y):
         if self.world_type == "overworld":
@@ -143,9 +147,16 @@ class World:
 
             if tile.health <= 0:
                 drop_id = tile.drop_item_id
+                replacement_tile = "cave_ground"
+
+                if self.world_type == "overworld":
+                    if "rock" in tile.tile_type:
+                        replacement_tile = "cave_ground"
+                    else:
+                        replacement_tile = "grass_default_1"
 
                 # Replace destroyed block with cave ground
-                self.set_tile(grid_x, grid_y, "cave_ground")
+                self.set_tile(grid_x, grid_y, replacement_tile)
 
                 return drop_id # Return what to drop
 

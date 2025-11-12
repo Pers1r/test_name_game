@@ -1,5 +1,4 @@
 import pygame
-from numpy.core.shape_base import block
 
 from constants import *
 from Building.building import Building

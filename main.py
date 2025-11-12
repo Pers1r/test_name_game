@@ -33,14 +33,14 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-def spawn_enemy(player, world_surface_width, enemy_list):
+def spawn_enemy(player, world_surface_width, current_world):
     spawn_radius = (world_surface_width / 2) + random.randint(50,150)
     angle = random.uniform(0, 2 * math.pi)
 
     spawn_x = player.pos.x + math.cos(angle) * spawn_radius
     spawn_y = player.pos.y + math.sin(angle) * spawn_radius
 
-    enemy_list.append(Enemy(spawn_x, spawn_y))
+    current_world.enemy_list.append(Enemy(spawn_x, spawn_y))
 
 def draw_pause_menu(screen, font):
     # Create a semi-transparent overlay
@@ -98,7 +98,7 @@ def handle_interaction(player, camera, world_mouse_pos, world_manager, crafting_
     grid_y = int(world_mouse_pos[1] // TILE_SIZE)
 
     for building in current_world.buildings_list:
-        if building.image_id == "work_branch" and building.world_rect.collidepoint(world_mouse_pos):
+        if building.item_id == "work_branch" and building.world_rect.collidepoint(world_mouse_pos):
             # Check proximity: is player close enough to the building?
             # Use an inflated player rect for a larger interaction range
             interaction_rect = player.rect.inflate(TILE_SIZE * 2, TILE_SIZE * 2)
@@ -110,7 +110,7 @@ def handle_interaction(player, camera, world_mouse_pos, world_manager, crafting_
     player_grid_y = int(player.pos.y // TILE_SIZE)
 
     for building in current_world.buildings_list:
-        if building.image_id == "elevator_down" and building.world_rect.colliderect(player.rect):
+        if building.item_id == "elevator_down" and building.world_rect.colliderect(player.rect):
             link = world_manager.get_elevator_link(building.world_rect.x // TILE_SIZE, building.world_rect.y // TILE_SIZE)
             if link:
                 target_world_id, target_x, target_y = link
@@ -177,10 +177,6 @@ def main(debug=False, performance=False):
     inventory_manager = InventoryManager(world_manager, build_image_surfaces)
     inventory_manager.spawn_starting_items()
     crafting_manager = CraftingManager(inventory_manager)
-
-    bullets = []
-    enemy_list = []
-    dropped_items_list = []
 
     wave_number = 0
     wave_active = False
@@ -287,35 +283,57 @@ def main(debug=False, performance=False):
                 if selected_tool and not inventory_manager.get_selected_buildable():
                     new_bullet = player.shoot(selected_tool)
                     if new_bullet:
-                        bullets.append(new_bullet)
+                        current_world.bullets.append(new_bullet)
 
         if not game_paused:
             if wave_active and enemies_to_spawn_this_wave > 0 and world_manager.current_world_id == "overworld":
                 if current_time - spawn_timer > spawn_delay:
                     spawn_timer = current_time
-                    spawn_enemy(player, world_surface_width, enemy_list)
+                    spawn_enemy(player, world_surface_width, current_world)
                     enemies_to_spawn_this_wave -= 1
 
-            if wave_active and enemies_to_spawn_this_wave == 0 and not enemy_list:
+            if wave_active and enemies_to_spawn_this_wave == 0 and not current_world.enemy_list:
                 wave_active = False
                 print(f"--- WAVE {wave_number} COMPLETE! ---")
                 print("Press 'N' to start next wave.")
 
 
-            for bullet in bullets:
-                bullet.update(dt, current_world, enemy_list, dropped_items_list, inventory_manager.item_factory)
+            for bullet in current_world.bullets:
+                bullet.update(dt, current_world, inventory_manager.item_factory)
 
-            for enemy in enemy_list:
-                enemy.update(dt, player, current_world, enemy_list)
+            for enemy in current_world.enemy_list:
+                enemy.update(dt, player, current_world, current_world.enemy_list)
 
-            for item in dropped_items_list:
+            for item in current_world.dropped_items_list:
                 item.update()
                 if game_active:
                     item.check_pickup(player, inventory_manager.inventory)
 
-            bullets = [bullet for bullet in bullets if bullet.lifetime > 0]
-            enemy_list = [e for e in enemy_list if e.is_alive]
-            dropped_items_list = [i for i in dropped_items_list if i.is_alive]
+            current_world.bullets = [bullet for bullet in current_world.bullets if bullet.lifetime > 0]
+            current_world.enemy_list = [e for e in current_world.enemy_list if e.is_alive]
+            current_world.dropped_items_list = [i for i in current_world.dropped_items_list if i.is_alive]
+
+            surviving_buildings = []
+            for building in current_world.buildings_list:
+                if building.health <= 0:
+                    # Building is destroyed, drop its item
+                    item_proto = inventory_manager.item_factory.get(building.item_id)
+                    if item_proto:
+                        new_drop = DroppedItem(building.world_rect.centerx, building.world_rect.centery, item_proto)
+                        current_world.dropped_items_list.append(new_drop)
+
+                    # Also, reset the tiles underneath it to be buildable again
+                    replacement_tile = "cave_ground"
+                    if current_world.world_type == "overworld":
+                        replacement_tile = "grass_default_1" # --- Use grass in overworld ---
+
+                    for y in range(building.world_rect.top // TILE_SIZE, building.world_rect.bottom // TILE_SIZE):
+                        for x in range(building.world_rect.left // TILE_SIZE, building.world_rect.right // TILE_SIZE):
+                            current_world.set_tile(x, y, replacement_tile)
+                else:
+                    surviving_buildings.append(building)
+
+            current_world.buildings_list = surviving_buildings
 
 
         # --- DRAW LOGIC ---
@@ -338,13 +356,13 @@ def main(debug=False, performance=False):
 
         player.draw(world_surface, camera, surface_mouse_pos)
 
-        for bullet in bullets:
+        for bullet in current_world.bullets:
             bullet.draw(world_surface, camera)
 
-        for enemy in enemy_list:
+        for enemy in current_world.enemy_list:
             enemy.draw(world_surface, camera)
 
-        for item in dropped_items_list:
+        for item in current_world.dropped_items_list:
             item.draw(world_surface, camera)
 
         inventory_manager.draw_ghost(world_surface, camera, world_mouse_pos)
@@ -364,9 +382,9 @@ def main(debug=False, performance=False):
             player_pos_text = f"Player World Pos: ({int(player.rect.x)}, {int(player.rect.y)})"
             cam_pos_text = f"Camera World Pos: ({int(camera.rect.x)}, {int(camera.rect.y)})"
             fps_text = f"FPS: {int(clock.get_fps())}"
-            bullet_text = f"Bullets: {len(bullets)}"
+            bullet_text = f"Bullets: {len(current_world.bullets)}"
 
-            enemy_text = f"Enemies: {len(enemy_list)}"
+            enemy_text = f"Enemies: {len(current_world.enemy_list)}"
             wave_text = f"Wave: {wave_number} (Active: {wave_active})"
             spawning_text = f"To Spawn: {enemies_to_spawn_this_wave}"
 
@@ -411,4 +429,4 @@ def main(debug=False, performance=False):
 
 
 if __name__ == "__main__":
-    main(debug=True, performance=True)
+    main(debug=True, performance=False)

@@ -19,10 +19,10 @@ class Bullet(pygame.sprite.Sprite):
         self.enemy_damage = enemy_damage
         self.block_damage = block_damage
 
-    def update(self, dt, world, enemy_list, dropped_items_list, item_factory):
+    def update(self, dt, world, item_factory):
         """
         Update the bullet's position and check for collisions.
-        We now pass in dropped_items_list and item_factory.
+        Uses world.dropped_items_list
         """
         self.pos += self.velocity * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
@@ -43,18 +43,23 @@ class Bullet(pygame.sprite.Sprite):
                     world_x = (grid_x * TILE_SIZE) + (TILE_SIZE // 2)
                     world_y = (grid_y * TILE_SIZE) + (TILE_SIZE // 2)
                     new_drop = DroppedItem(world_x, world_y, item_proto)
-                    dropped_items_list.append(new_drop)
+                    world.dropped_items_list.append(new_drop)
                 else:
                     print(f"Error: No item prototype found for drop_id '{drop_id}'")
             self.lifetime = 0
             return
 
-
-        for enemy in enemy_list:
-            if self.rect.colliderect(enemy.rect):
-                enemy.take_damage(self.damage)
+        for building in world.buildings_list:
+            if building.world_rect.colliderect(self.rect):
+                building.health -= self.enemy_damage # Use enemy_damage for buildings
                 self.lifetime = 0
-                break
+                return # Stop processing
+
+        for enemy in world.enemy_list:
+            if self.rect.colliderect(enemy.rect):
+                enemy.take_damage(self.enemy_damage)
+                self.lifetime = 0
+                return
 
     def draw(self, surface, camera):
         screen_rect = camera.set_target(self.rect)
