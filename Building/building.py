@@ -30,6 +30,10 @@ class Building:
         elif item_id == "work_branch":
             self.health = 30
 
+    def take_damage(self, damage):
+        """Applies damage to the building."""
+        self.health -= damage
+
     def draw(self, surface, camera):
         screen_rect = camera.set_target(self.world_rect)
         surface.blit(self.image, screen_rect)

@@ -20,40 +20,37 @@ class Bullet(pygame.sprite.Sprite):
         self.block_damage = block_damage
 
     def update(self, dt, world, item_factory):
-        """
-        Update the bullet's position and check for collisions.
-        Uses world.dropped_items_list
-        """
         self.pos += self.velocity * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
-
         self.lifetime -= dt
 
         grid_x = int(self.pos.x // TILE_SIZE)
         grid_y = int(self.pos.y // TILE_SIZE)
         tile = world.get_tile_at_grid_pos(grid_x, grid_y)
 
-        if tile and not tile.is_bullet_penetrable:
-            drop_id = world.damage_tile(grid_x, grid_y, self.block_damage)
+        if tile:
 
-            if drop_id:
-                item_proto = item_factory.get(drop_id)
-                if item_proto:
-                    # Spawn the item at the block's center
-                    world_x = (grid_x * TILE_SIZE) + (TILE_SIZE // 2)
-                    world_y = (grid_y * TILE_SIZE) + (TILE_SIZE // 2)
-                    new_drop = DroppedItem(world_x, world_y, item_proto)
-                    world.dropped_items_list.append(new_drop)
-                else:
-                    print(f"Error: No item prototype found for drop_id '{drop_id}'")
-            self.lifetime = 0
-            return
-
-        for building in world.buildings_list:
-            if building.world_rect.colliderect(self.rect):
-                building.health -= self.enemy_damage # Use enemy_damage for buildings
+            if tile.building:
+                tile.building.take_damage(self.enemy_damage)
                 self.lifetime = 0
-                return # Stop processing
+                return
+
+            if not tile.is_bullet_penetrable:
+
+                drop_id = world.damage_tile(grid_x, grid_y, self.block_damage)
+
+                if drop_id:
+                    item_proto = item_factory.get(drop_id)
+                    if item_proto:
+                        # Spawn the item at the block's center
+                        world_x = (grid_x * TILE_SIZE) + (TILE_SIZE // 2)
+                        world_y = (grid_y * TILE_SIZE) + (TILE_SIZE // 2)
+                        new_drop = DroppedItem(world_x, world_y, item_proto)
+                        world.dropped_items_list.append(new_drop)
+                    else:
+                        print(f"Error: No item prototype found for drop_id '{drop_id}'")
+                self.lifetime = 0
+                return
 
         for enemy in world.enemy_list:
             if self.rect.colliderect(enemy.rect):

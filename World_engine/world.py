@@ -3,7 +3,7 @@ import noise
 from constants import *
 from .tile import *
 from .chunk import *
-
+from Entities.dropped_item import DroppedItem
 
 
 class World:
@@ -16,9 +16,78 @@ class World:
 
         self.buildings_list = []
         self.dropped_items_list = []
-
         self.bullets = []
         self.enemy_list = []
+
+        self.item_factory = None
+
+    def update(self, dt, player, inventory_manager):
+        """
+        Updates all entities within this world.
+        """
+        for bullet in self.bullets:
+            bullet.update(dt, self, self.item_factory)
+
+        for enemy in self.enemy_list:
+            enemy.update(dt, player, self, self.enemy_list)
+
+        for item in self.dropped_items_list:
+            item.update()
+
+            if not inventory_manager.is_open():
+                item.check_pickup(player, inventory_manager.inventory)
+
+        self.bullets = [bullet for bullet in self.bullets if bullet.lifetime > 0]
+        self.enemy_list = [e for e in self.enemy_list if e.is_alive]
+        self.dropped_items_list = [i for i in self.dropped_items_list if i.is_alive]
+
+        surviving_buildings = []
+        for building in self.buildings_list:
+            if building.health <= 0:
+                # Building is destroyed, drop its item
+                item_proto = self.item_factory.get(building.item_id)
+                if item_proto:
+                    new_drop = DroppedItem(building.world_rect.centerx, building.world_rect.centery, item_proto)
+                    self.dropped_items_list.append(new_drop)
+
+                # Unlink the building from the tiles it occupied
+                size = building.game_size
+                grid_x = building.world_rect.x // TILE_SIZE
+                grid_y = building.world_rect.y // TILE_SIZE
+                for y in range(grid_y, grid_y + size):
+                    for x in range(grid_x, grid_x + size):
+                        tile = self.get_tile_at_grid_pos(x, y)
+                        if tile and tile.building == building:
+                            tile.building = None # Unlink
+            else:
+                surviving_buildings.append(building)
+
+        self.buildings_list = surviving_buildings
+
+    def draw(self, surface, camera):
+        """
+        Draws all chunks and entities in this world.
+        """
+        # --- 1. Draw Chunks ---
+        cam_chunk_x = camera.rect.center[0] // (CHUNK_SIZE * TILE_SIZE)
+        cam_chunk_y = camera.rect.center[1] // (CHUNK_SIZE * TILE_SIZE)
+        for y in range(cam_chunk_y - 3, cam_chunk_y + 3):
+            for x in range(cam_chunk_x - 3, cam_chunk_x + 3):
+                chunk_to_draw = self.get_or_generate_chunk(x, y)
+                chunk_to_draw.draw(surface, camera)
+
+        # --- 2. Draw Entities ---
+        for building in self.buildings_list:
+            building.draw(surface, camera)
+
+        for bullet in self.bullets:
+            bullet.draw(surface, camera)
+
+        for enemy in self.enemy_list:
+            enemy.draw(surface, camera)
+
+        for item in self.dropped_items_list:
+            item.draw(surface, camera)
 
     def get_base_type_at(self, global_x, global_y):
         if self.world_type == "overworld":

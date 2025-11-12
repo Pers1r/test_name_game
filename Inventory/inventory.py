@@ -79,7 +79,7 @@ class Inventory:
         return True
 
 
-    def handle_input(self, event):
+    def handle_hotbar_input(self, event):
         """Handles key presses for selecting hotbar slots."""
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_1: self.selected_slot_index = 0

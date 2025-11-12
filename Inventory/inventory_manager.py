@@ -78,11 +78,6 @@ class InventoryManager:
         """Checks if the full inventory UI is open."""
         return self.inventory.is_open
 
-    def toggle_inventory(self):
-        """Opens or closes the full inventory UI."""
-        self.inventory.is_open = not self.inventory.is_open
-        print(f"Inventory open: {self.inventory.is_open}")
-
     def get_selected_buildable(self):
         """
         Checks if the currently selected hotbar item is a BuildableItem.
@@ -107,55 +102,47 @@ class InventoryManager:
             return slot.item
         return None
 
-    def handle_input(self, event, world, world_mouse_pos):
+    def handle_hotbar_keys(self, event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_e:
-                self.toggle_inventory()
+            self.inventory.handle_hotbar_input(event)
 
-            if not self.is_open():
-                self.inventory.handle_input(event)
-
+    def handle_inventory_input(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.is_open():
-                # TODO: Handle inventory click-and-drag logic
-                pass
-            else:
-                buildable_item = self.get_selected_buildable()
-                if buildable_item:
-                    self.try_place_building(world, world_mouse_pos, buildable_item)
+            print("Clicked inside inventory screen (TODO: Handle item move)")
+
+    def handle_place_building_click(self, event, world, world_mouse_pos):
+        """
+        Handles the MOUSEBUTTONDOWN event when in the PLAYING state.
+        Tries to place a building if one is selected.
+        """
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            buildable_item = self.get_selected_buildable()
+            if buildable_item:
+                self.try_place_building(world, world_mouse_pos, buildable_item)
 
     def try_place_building(self, world, world_mouse_pos, item):
-        """
-        Contains all the logic for checking and placing a buildable item.
-        This is moved from the old BuildingManager.
-        """
         size = item.game_size
         grid_x = int(world_mouse_pos[0] // TILE_SIZE)
         grid_y = int(world_mouse_pos[1] // TILE_SIZE)
 
         can_build = True
+        tiles_to_occupy = []
         for y in range(grid_y, grid_y + size):
             for x in range(grid_x, grid_x + size):
                 tile = world.get_tile_at_grid_pos(x, y)
-                if not tile or not tile._is_buildable:
+                if not tile or not tile.is_buildable:
                     can_build = False
                     break
-                if not can_build:
-                    break
-
-        if can_build:
-            temp_rect = pygame.Rect(grid_x * TILE_SIZE, grid_y * TILE_SIZE, size * TILE_SIZE, size * TILE_SIZE)
-            for b in world.buildings_list:
-                if temp_rect.colliderect(b.world_rect):
-                    can_build = False
-                    break
+                tiles_to_occupy.append(tile)
+            if not can_build:
+                break
 
         if can_build and item.item_id == "elevator_down":
             if self.world_manager.get_elevator_link(grid_x, grid_y):
                 print("Cannot build: An elevator link already exists here.")
                 can_build = False
-        if can_build:
 
+        if can_build:
             if item.item_id == "elevator_down":
                 # --- This is your correct elevator logic from the last fix ---
                 overworld_world = self.world_manager.get_world("overworld")
@@ -187,13 +174,15 @@ class InventoryManager:
                 print(f"Placed elevator link at ({grid_x}, {grid_y})")
 
             else:
-                # --- DEFAULT LOGIC FOR ALL OTHER BUILDINGS ---
-                for y in range(grid_y, grid_y + size):
-                    for x in range(grid_x, grid_x + size):
-                        world.set_tile(x, y, "rock_default")
-
+                # 1. Create the building
                 image = self.build_image_surfaces[item.build_image_id]
                 new_building = Building(grid_x, grid_y, item.item_id, image)
+
+                # 2. Link the building to the tiles it occupies
+                for tile in tiles_to_occupy:
+                    tile.building = new_building
+
+                # 3. Add building to world list
                 world.buildings_list.append(new_building)
                 print(f"Placed {item.name} at ({grid_x}, {grid_y})")
 
@@ -223,6 +212,7 @@ class InventoryManager:
         grid_x = int(world_mouse_pos[0] // TILE_SIZE)
         grid_y = int(world_mouse_pos[1] // TILE_SIZE)
         ghost_world_pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
+        ghost_rect = ghost_surface.get_rect(topleft=ghost_world_pos)
 
         can_build = True
         world = camera.world # Get world from camera
@@ -231,21 +221,13 @@ class InventoryManager:
         for y in range(grid_y, grid_y + size):
             for x in range(grid_x, grid_x + size):
                 tile = world.get_tile_at_grid_pos(x, y)
-                if not tile or not tile._is_buildable:
+                if not tile or not tile.is_buildable:
                     can_build = False
                     break
             if not can_build:
                 break
 
-        # --- 2. Check buildings ---
-        ghost_rect = ghost_surface.get_rect(topleft=ghost_world_pos)
-        if can_build:
-            for b in world.buildings_list:
-                if ghost_rect.colliderect(b.world_rect):
-                    can_build = False
-                    break
-
-        # --- 3. Check elevator links ---
+        # --- 2. Check elevator links ---
         if can_build and buildable_item.item_id == "elevator_down":
              if self.world_manager.get_elevator_link(grid_x, grid_y):
                 can_build = False
