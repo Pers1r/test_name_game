@@ -129,9 +129,7 @@ class Game:
         if self.game_state == GameState.GAME_OVER:
             return
 
-        if self.game_state == GameState.PAUSED and new_state != GameState.PAUSED:
-            self.previous_state = GameState.PAUSED # Avoid weird loops
-        else:
+        if self.game_state != GameState.PAUSED:
             self.previous_state = self.game_state
 
         self.game_state = new_state

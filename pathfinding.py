@@ -32,7 +32,13 @@ def astar(world, start, end):
     # Add the start node to the open list
     heapq.heappush(open_list, start_node)
 
+    iterations = 0
+    MAX_ITERATIONS = 1000
+
     while len(open_list) > 0:
+        iterations += 1
+        if iterations > MAX_ITERATIONS:
+            return None
         # Get the current node
         current_node = heapq.heappop(open_list)
         closed_list.add(current_node.position)
@@ -51,7 +57,10 @@ def astar(world, start, end):
             node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
             # Make sure tile is walkable
             tile = world.get_tile_at_grid_pos_SAFE(node_position[0], node_position[1])
-            if not tile or not tile.is_walkable:
+            if not tile:
+                continue
+
+            if not tile.is_walkable and node_position != end:
                 continue
 
             # Make sure not already processed

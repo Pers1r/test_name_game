@@ -10,7 +10,7 @@ class Enemy(pygame.sprite.Sprite):
         super().__init__()
 
         self.pos = pygame.Vector2(x, y)
-        self.rect = pygame.Rect(0, 0, ENEMY_SIZE, ENEMY_SIZE)
+        self.rect = pygame.Rect(0, 0, ENEMY_SIZE-1, ENEMY_SIZE-1)
         self.rect.center = self.pos
 
         self.velocity = pygame.Vector2(0, 0)
@@ -29,36 +29,66 @@ class Enemy(pygame.sprite.Sprite):
         self.path_recalc_delay = PATH_RECALC_DELAY
         self.last_path_recalc_time = 0
 
+    def get_target_center(self, target):
+        """Helper to safely get center of target (Player uses .rect, Buildings use .world_rect)"""
+        if hasattr(target, 'rect'):
+            return pygame.Vector2(target.rect.center)
+        elif hasattr(target, 'world_rect'):
+            return pygame.Vector2(target.world_rect.center)
+        return pygame.Vector2(0, 0)
+
     def find_new_target(self, player, world, main_crystal):
-        """Sets self.target based on priority: Crystal > Player > Buildings."""
+        """
+        Sets self.target based on Distance first, then Priority.
+        Priority Order: Crystal (0) > Player (1) > Buildings (2)
+        Logic: Find the closest object. Anything else within +TILE_SIZE distance
+               is considered 'equal' distance, and we pick based on priority.
+        """
+        candidates = [] # Stores dicts: {'obj': object, 'dist': float, 'priority': int}
 
+        # 1. Evaluate Main Crystal (Priority 0)
         if main_crystal and main_crystal.is_alive:
-            self.target = main_crystal
-            self.path = []
-            return
+            dist = (self.pos - self.get_target_center(main_crystal)).magnitude()
+            candidates.append({'obj': main_crystal, 'dist': dist, 'priority': 0})
 
+        # 2. Evaluate Player (Priority 1)
         if player.is_alive:
-            self.target = player
-            self.path = []
-            return
+            dist = (self.pos - self.get_target_center(player)).magnitude()
+            candidates.append({'obj': player, 'dist': dist, 'priority': 1})
 
-        closest_building = None
-        min_dist = float('inf')
-
+        # 3. Evaluate Closest Building (Priority 2)
+        closest_b = None
+        min_b_dist = float('inf')
+        # Optimization: Check buildings, but we only care about the closest one to add to candidates
         for building in world.buildings_list:
-            if building.is_alive:
-                try:
-                    dist = (self.pos - building.rect.center).magnitude_squared()
-                except AttributeError:
-                    dist = (self.pos - building.world_rect.center).magnitude_squared()
-                if dist < min_dist:
-                    min_dist = dist
-                    closest_building = building
+            if building.is_alive and building.item_id != "main_crystal":
+                d = (self.pos - building.world_rect.center).magnitude()
+                if d < min_b_dist:
+                    min_b_dist = d
+                    closest_b = building
 
-        if closest_building:
-            self.target = closest_building
-            self.path = []
+        if closest_b:
+            candidates.append({'obj': closest_b, 'dist': min_b_dist, 'priority': 2})
+
+        # --- Decision Logic ---
+        if not candidates:
+            self.target = None
             return
+
+        # Sort by distance to find the absolute closest
+        candidates.sort(key=lambda x: x['dist'])
+        min_dist = candidates[0]['dist']
+
+        # Filter: Keep only targets that are within the "mostly equal" range (Min Dist + TILE_SIZE)
+        # e.g., if Player is 100px away and Crystal is 120px, 120 < 100+32, so Crystal is valid.
+        valid_options = [c for c in candidates if c['dist'] <= min_dist + TILE_SIZE]
+
+        # Sort valid options by Priority (Low number = High Priority)
+        valid_options.sort(key=lambda x: x['priority'])
+
+        # Pick the winner
+        self.target = valid_options[0]['obj']
+        self.path = [] # Reset path for new target
 
     def update(self, dt, player, world, enemy_list, main_crystal):
         current_time = pygame.time.get_ticks()
@@ -69,13 +99,8 @@ class Enemy(pygame.sprite.Sprite):
             self.path = []
 
         # "Target Lock" for buildings
-        if self.target and hasattr(self.target, 'item_id') and self.target.item_id != "main_crystal":
-            # Target is a non-crystal building, stay locked
-            pass
-        else:
-            # Re-evaluate target if no target, or if target is player/crystal
-            if self.target is None:
-                self.find_new_target(player, world, main_crystal)
+        if self.target is None:
+            self.find_new_target(player, world, main_crystal)
 
         target_rect = None
         target_center = None
@@ -86,38 +111,45 @@ class Enemy(pygame.sprite.Sprite):
                 target_rect = self.target.world_rect
             target_center = pygame.Vector2(target_rect.center)
 
-# --- 2. PATHFINDING (if target exists) ---
+        # --- 2. PATHFINDING ---
         if self.target:
-            if not self.path or current_time - self.last_path_recalc_time > self.path_recalc_delay:
-                self.last_path_recalc_time = current_time
-                start_grid = (int(self.pos.x // TILE_SIZE), int(self.pos.y // TILE_SIZE))
+            dist_to_target = (self.pos - target_center).magnitude()
 
-                # Path to the target's rect center (using our helper)
-                end_grid = (int(target_center.x // TILE_SIZE), int(target_center.y // TILE_SIZE))
+            # Recalculate path only if far away
+            if dist_to_target > TILE_SIZE * 1.5:
+                if not self.path or current_time - self.last_path_recalc_time > self.path_recalc_delay:
+                    self.last_path_recalc_time = current_time
+                    start_grid = (int(self.pos.x // TILE_SIZE), int(self.pos.y // TILE_SIZE))
+                    end_grid = (int(target_center.x // TILE_SIZE), int(target_center.y // TILE_SIZE))
 
-                if start_grid != end_grid:
-                    # This call is now safe and will not freeze the game
-                    grid_path = astar(world, start_grid, end_grid)
-                    if grid_path and len(grid_path) > 1:
-                        self.path = [pygame.Vector2(x*TILE_SIZE + TILE_SIZE/2, y*TILE_SIZE + TILE_SIZE/2) for x, y in grid_path[1:]]
-                        self.path_index = 0
-                    else:
-                        self.path = [] # No path found
+                    if start_grid != end_grid:
+                        grid_path = astar(world, start_grid, end_grid)
+                        if grid_path and len(grid_path) > 1:
+                            self.path = [pygame.Vector2(x*TILE_SIZE + TILE_SIZE/2, y*TILE_SIZE + TILE_SIZE/2) for x, y in grid_path[1:]]
+                            self.path_index = 0
+                        else:
+                            self.path = []
+            else:
+                self.path = []
 
         # --- 3. MOVEMENT & ATTACKING ---
         seek_force = pygame.Vector2(0, 0)
 
         if self.target:
-            # Check for attack range (using helper rect)
-            if self.rect.colliderect(target_rect):
+            # FIX: Use inflate(4, 4) to detect collision even if just touching
+            # This fixes the issue where enemies stand next to crystal but don't attack
+            attack_range_rect = self.rect.inflate(4, 4)
+
+            if attack_range_rect.colliderect(target_rect):
                 # --- IN ATTACK RANGE ---
                 self.velocity = pygame.Vector2(0, 0) # Stop moving
                 if self.attack_timer <= 0:
-                    self.target.take_damage(self.damage)
+                    # Ensure target has take_damage method
+                    if hasattr(self.target, 'take_damage'):
+                        self.target.take_damage(self.damage)
                     self.attack_timer = self.attack_cooldown
             else:
                 # --- OUTSIDE ATTACK RANGE: MOVE ---
-                # A) Path-Following
                 if self.path_index < len(self.path):
                     target_pos = self.path[self.path_index]
                     direction_to_target = target_pos - self.pos
@@ -126,9 +158,8 @@ class Enemy(pygame.sprite.Sprite):
                         self.path_index += 1
                     if direction_to_target.magnitude() > 0:
                         seek_force = direction_to_target.normalize()
-
-                # B) Fallback: No Path (using helper center)
                 else:
+                    # Fallback: Direct seek
                     direction_to_target = target_center - self.pos
                     if direction_to_target.magnitude() > 0:
                         seek_force = direction_to_target.normalize()

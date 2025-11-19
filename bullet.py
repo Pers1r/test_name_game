@@ -32,7 +32,7 @@ class Bullet(pygame.sprite.Sprite):
 
             if tile.building:
                 if tile.building.item_id == "main_crystal":
-                    tile.building.take_damage(-self.enemy_damage)
+                    tile.building.take_damage(self.enemy_damage)
                 else:
                     tile.building.take_damage(self.enemy_damage)
 
