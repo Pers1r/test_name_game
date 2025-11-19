@@ -5,3 +5,4 @@ class GameState(Enum):
     PAUSED = auto()
     INVENTORY = auto()
     CRAFTING = auto()
+    GAME_OVER = auto()

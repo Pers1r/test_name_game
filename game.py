@@ -18,6 +18,7 @@ from World_engine.world_manager import WorldManager
 from Inventory.inventory_manager import InventoryManager
 from Crafting.crafting_manager import CraftingManager
 from ui.pause_menu import draw_pause_menu, handle_pause_click
+from ui.game_over_screen import draw_game_over_screen, handle_game_over_click
 
 # --- Loaders & Constants ---
 from constants import *
@@ -59,6 +60,8 @@ class Game:
 
         # --- Load Assets ---
         self.font = pygame.font.Font(None, 30)
+        self.font_large = pygame.font.Font(None, 72)
+
         try:
             # Note: We now use self.resource_path()
             tileset_image = pygame.image.load(self.resource_path("assets/TileSet_V2.png")).convert_alpha()
@@ -81,6 +84,9 @@ class Game:
         self.camera = Camera(self.world_surface_width, self.world_surface_height)
         self.world_manager = WorldManager(seed=seed, tile_dictionary=self.tile_dictionary, rocks_images=self.rocks_image_surfaces)
         self.camera.world = self.world_manager.get_current_world()
+
+        # --- Main Game Loop Tracking ---
+        self.main_crystal = None
 
         # --- Initialize Managers ---
         self.inventory_manager = InventoryManager(self.world_manager, self.build_image_surfaces)
@@ -119,6 +125,10 @@ class Game:
                 self.world_manager.get_current_world().get_or_generate_chunk(x, y)
 
     def set_state(self, new_state):
+        # Prevent state changes after game over
+        if self.game_state == GameState.GAME_OVER:
+            return
+
         if self.game_state == GameState.PAUSED and new_state != GameState.PAUSED:
             self.previous_state = GameState.PAUSED # Avoid weird loops
         else:
@@ -143,7 +153,9 @@ class Game:
             # --- Core Loop ---
             dt = self.clock.tick(FPS) / 1000.0
             self.current_time = pygame.time.get_ticks()
-            self.current_world = self.world_manager.get_current_world()
+
+            if self.game_state != GameState.GAME_OVER:
+                self.current_world = self.world_manager.get_current_world()
 
             # --- Mouse Position ---
             mx, my = pygame.mouse.get_pos()
@@ -173,7 +185,9 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     if self.game_state == GameState.INVENTORY or self.game_state == GameState.CRAFTING:
                         self.set_state(GameState.PLAYING)
-                    else:
+                    elif self.game_state == GameState.PLAYING:
+                        self.toggle_pause()
+                    elif self.game_state == GameState.PAUSED:
                         self.toggle_pause()
 
             # --- State-Based Event Handling ---
@@ -185,6 +199,8 @@ class Game:
                 self._handle_inventory_events(event)
             elif self.game_state == GameState.CRAFTING:
                 self._handle_crafting_events(event)
+            elif self.game_state == GameState.GAME_OVER:
+                self._handle_game_over_events(event)
 
     def _handle_playing_events(self, event):
         self.inventory_manager.handle_hotbar_keys(event)
@@ -199,7 +215,7 @@ class Game:
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             # Pass to inventory manager for placing buildings
-            self.inventory_manager.handle_place_building_click(event, self.current_world, self.world_mouse_pos)
+            self.inventory_manager.handle_place_building_click(event, self.current_world, self.world_mouse_pos, self)
 
         if event.type == pygame.MOUSEWHEEL:
             self.handle_zoom(event)
@@ -224,22 +240,54 @@ class Game:
         if not self.crafting_manager.is_open:
             self.set_state(GameState.PLAYING)
 
+    def _handle_game_over_events(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = handle_game_over_click(event.pos, self.game_over_rects)
+            if action == "quit":
+                self.running = False
+
     def update(self, dt):
         if self.game_state == GameState.PLAYING:
             self.player.update(dt, self.current_world, self.camera)
             self.camera.update(self.player)
             self.handle_shooting()
 
-        if self.game_state != GameState.PAUSED:
-            self.current_world.update(dt, self.player, self.inventory_manager)
+        if self.game_state == GameState.PLAYING or self.game_state == GameState.INVENTORY or self.game_state == GameState.CRAFTING:
+            # Pass the main_crystal to the world update loop
+            self.current_world.update(dt, self.player, self.inventory_manager, self.main_crystal)
 
-            # Update wave spawner
             if self.world_manager.current_world_id == "overworld":
                 self.wave_manager.update(
                     self.current_time,
                     self.player,
                     self.current_world
                 )
+
+            # --- Check for Lose Conditions ---
+            self._check_lose_conditions()
+
+    def _check_lose_conditions(self):
+        # 1. Player dies before placing crystal
+        if not self.player.is_alive and self.main_crystal is None:
+            print("Game Over: Player died before placing the crystal.")
+            self.set_state(GameState.GAME_OVER)
+
+        # 2. Player dies, but crystal is placed -> Respawn
+        elif not self.player.is_alive and self.main_crystal is not None:
+            self._respawn_player()
+
+        # 3. Crystal is destroyed
+        if self.main_crystal and not self.main_crystal.is_alive:
+            print("Game Over: The Main Crystal was destroyed.")
+            self.set_state(GameState.GAME_OVER)
+
+    def _respawn_player(self):
+        # Find a safe spot near the crystal
+        respawn_pos = self.main_crystal.world_rect.center
+        # TODO: Add logic to find a valid *walkable* tile near the crystal
+        # For now, just respawn on its center.
+        self.player.respawn(respawn_pos)
+        self.camera.update(self.player) # Snap camera to respawn
 
     def draw(self):
         self.world_surface.fill("black")
@@ -248,8 +296,9 @@ class Game:
         self.current_world.draw(self.world_surface, self.camera)
 
         # --- Draw Player & Ghost ---
-        self.player.draw(self.world_surface, self.camera, self.surface_mouse_pos)
-        self.inventory_manager.draw_ghost(self.world_surface, self.camera, self.world_mouse_pos)
+        if self.game_state != GameState.GAME_OVER:
+            self.player.draw(self.world_surface, self.camera, self.surface_mouse_pos)
+            self.inventory_manager.draw_ghost(self.world_surface, self.camera, self.world_mouse_pos)
 
         # --- Scale World to Screen ---
         pygame.transform.scale(self.world_surface, (SCREEN_WIDTH, SCREEN_HEIGHT), self.screen)
@@ -262,6 +311,9 @@ class Game:
             self.crafting_manager.draw(self.screen)
         elif self.game_state == GameState.PAUSED:
             self.pause_menu_rects = draw_pause_menu(self.screen, self.font)
+        elif self.game_state == GameState.GAME_OVER:
+            # Draw the game over screen
+            self.game_over_rects = draw_game_over_screen(self.screen, self.font_large)
 
         if self.debug:
             self.draw_debug_info()
@@ -325,6 +377,7 @@ class Game:
         # Draw
         texts = [
             f"Player World Pos: ({int(self.player.rect.x)}, {int(self.player.rect.y)})",
+            f"Player Health: {self.player.health}", # Added
             f"Camera World Pos: ({int(self.camera.rect.x)}, {int(self.camera.rect.y)})",
             f"FPS: {int(self.clock.get_fps())}",
             f"Bullets: {len(self.current_world.bullets)}",
@@ -333,6 +386,7 @@ class Game:
             wave_debug[1], # Spawning text
             f"World: {self.world_manager.current_world_id}",
             f"Game State: {self.game_state.name}"
+            f"Crystal Placed: {'YES' if self.main_crystal else 'NO'}" # Added
         ]
 
         for i, text in enumerate(texts):

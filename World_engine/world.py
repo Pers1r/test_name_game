@@ -21,7 +21,7 @@ class World:
 
         self.item_factory = None
 
-    def update(self, dt, player, inventory_manager):
+    def update(self, dt, player, inventory_manager, main_crystal):
         """
         Updates all entities within this world.
         """
@@ -29,7 +29,7 @@ class World:
             bullet.update(dt, self, self.item_factory)
 
         for enemy in self.enemy_list:
-            enemy.update(dt, player, self, self.enemy_list)
+            enemy.update(dt, player, self, self.enemy_list, main_crystal)
 
         for item in self.dropped_items_list:
             item.update()
@@ -88,6 +88,27 @@ class World:
 
         for item in self.dropped_items_list:
             item.draw(surface, camera)
+
+
+    def get_tile_at_grid_pos_SAFE(self, grid_x, grid_y):
+            """
+            A "safe" version of get_tile_at_grid_pos that does NOT
+            generate new chunks. Returns None if the chunk isn't loaded.
+            """
+            chunk_x = grid_x // CHUNK_SIZE
+            chunk_y = grid_y // CHUNK_SIZE
+
+            # Check if chunk exists *without* generating
+            if (chunk_x, chunk_y) not in self.chunks:
+                return None # Chunk is not loaded, treat as unwalkable/unknown
+
+            try:
+                local_x = grid_x % CHUNK_SIZE
+                local_y = grid_y % CHUNK_SIZE
+                chunk = self.chunks[(chunk_x, chunk_y)] # Get existing chunk
+                return chunk.chunk[local_y][local_x]
+            except (IndexError, TypeError):
+                return None
 
     def get_base_type_at(self, global_x, global_y):
         if self.world_type == "overworld":

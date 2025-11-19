@@ -1,5 +1,6 @@
 import heapq
 
+
 class Node:
     def __init__(self, parent=None, position=None):
         self.parent = parent
@@ -49,7 +50,7 @@ def astar(world, start, end):
             # Get node position
             node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
             # Make sure tile is walkable
-            tile = world.get_tile_at_grid_pos(node_position[0], node_position[1])
+            tile = world.get_tile_at_grid_pos_SAFE(node_position[0], node_position[1])
             if not tile or not tile.is_walkable:
                 continue
 

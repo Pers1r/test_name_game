@@ -30,9 +30,20 @@ class Building:
         elif item_id == "work_branch":
             self.health = 30
 
+        self.is_alive = True
+
     def take_damage(self, damage):
         """Applies damage to the building."""
+        # We'll use negative damage to signify player damage
+        if self.item_id == "main_crystal" and damage < 0:
+            print("Player cannot damage the crystal!")
+            return # Player cannot damage crystal
+
         self.health -= damage
+        if self.health <= 0:
+            self.health = 0
+            self.is_alive = False
+            print(f"Building {self.item_id} destroyed!")
 
     def draw(self, surface, camera):
         screen_rect = camera.set_target(self.world_rect)

@@ -31,7 +31,11 @@ class Bullet(pygame.sprite.Sprite):
         if tile:
 
             if tile.building:
-                tile.building.take_damage(self.enemy_damage)
+                if tile.building.item_id == "main_crystal":
+                    tile.building.take_damage(-self.enemy_damage)
+                else:
+                    tile.building.take_damage(self.enemy_damage)
+
                 self.lifetime = 0
                 return
 

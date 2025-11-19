@@ -25,6 +25,11 @@ class Player(pygame.sprite.Sprite):
         # self.shoot_delay = PLATER_SHOOT_DELAY
         self.last_shoot_time = 0
 
+        self.health = PLAYER_HEALTH
+        self.is_alive = True
+        self.is_invulnerable = False
+        self.invulnerability_timer = 0
+
         self.aim_offset = 2 / ZOOM_LEVEL
         self.aim_size = 8 / ZOOM_LEVEL
 
@@ -47,6 +52,17 @@ class Player(pygame.sprite.Sprite):
 
 
     def update(self, dt, world, camera):
+        # --- Handle Invulnerability ---
+        if self.is_invulnerable:
+            self.invulnerability_timer -= dt
+            if self.invulnerability_timer <= 0:
+                self.is_invulnerable = False
+
+        # --- Don't move if dead ---
+        if not self.is_alive:
+            self.velocity.x, self.velocity.y = 0, 0
+            return
+
         # Get input
         self.velocity.x, self.velocity.y = 0, 0
         keys = pygame.key.get_pressed()
@@ -99,32 +115,30 @@ class Player(pygame.sprite.Sprite):
 
                 self.pos.y = self.rect.centery
 
-    # def handle_interaction(self, world_manager, camera):
-    #     """
-    #     Called when the player presses the 'E' key.
-    #     Checks for interactable objects (buildings or tiles)
-    #     at the player's position.
-    #     """
-    #     # Find player's grid position
-    #     grid_x = int(self.pos.x // TILE_SIZE)
-    #     grid_y = int(self.pos.y // TILE_SIZE)
-    #
-    #     current_world = world_manager.get_current_world()
-    #     for building in current_world.buildings_list:
-    #         if building.image_id == "elevator_down" and building.world_rect.colliderect(self.rect):
-    #             link = world_manager.get_elevator_link(building.world_rect.x // TILE_SIZE, building.world_rect.y // TILE_SIZE)
-    #             if link:
-    #                 target_world_id, target_x, target_y = link
-    #                 world_manager.transition_player(self, camera, target_world_id, target_x, target_y)
-    #                 return
-    #
-    #     link = world_manager.get_elevator_link(grid_x, grid_y)
-    #     if link:
-    #         target_world_id, target_x, target_y = link
-    #         world_manager.transition_player(self, camera, target_world_id, target_x, target_y)
-    #         return
+    def take_damage(self, damage):
+        if self.is_invulnerable or not self.is_alive:
+            return
+
+        self.health -= damage
+        if self.health <= 0:
+            self.health = 0
+            self.is_alive = False
+            print("Player has died!")
+
+    def respawn(self, respawn_pos):
+        """Called by the Game class to reset the player."""
+        self.pos = pygame.Vector2(respawn_pos)
+        self.rect.center = self.pos
+        self.health = PLAYER_HEALTH
+        self.is_alive = True
+        self.is_invulnerable = True
+        self.invulnerability_timer = PLAYER_INVULNERABILITY_TIME
+        print("Player has respawned!")
 
     def draw(self, surface, camera, mouse_pos):
+        if not self.is_alive:
+            return
+
         # 1. Find stable screen rectangle
         screen_rect = camera.set_target(self.rect)
         screen_center = screen_rect.center
@@ -164,6 +178,9 @@ class Player(pygame.sprite.Sprite):
         """
         Shoots a bullet using the stats from the provided tool_item.
         """
+        if not self.is_alive:
+            return None
+
         current_time = pygame.time.get_ticks()
 
         if current_time - self.last_shoot_time > tool_item.shoot_delay:

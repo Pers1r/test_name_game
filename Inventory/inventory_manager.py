@@ -110,7 +110,7 @@ class InventoryManager:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             print("Clicked inside inventory screen (TODO: Handle item move)")
 
-    def handle_place_building_click(self, event, world, world_mouse_pos):
+    def handle_place_building_click(self, event, world, world_mouse_pos, game):
         """
         Handles the MOUSEBUTTONDOWN event when in the PLAYING state.
         Tries to place a building if one is selected.
@@ -118,9 +118,9 @@ class InventoryManager:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             buildable_item = self.get_selected_buildable()
             if buildable_item:
-                self.try_place_building(world, world_mouse_pos, buildable_item)
+                self.try_place_building(world, world_mouse_pos, buildable_item, game)
 
-    def try_place_building(self, world, world_mouse_pos, item):
+    def try_place_building(self, world, world_mouse_pos, item, game):
         size = item.game_size
         grid_x = int(world_mouse_pos[0] // TILE_SIZE)
         grid_y = int(world_mouse_pos[1] // TILE_SIZE)
@@ -137,12 +137,19 @@ class InventoryManager:
             if not can_build:
                 break
 
+        if can_build and item.item_id == "main_crystal":
+            if game.main_crystal is not None:
+                print("Cannot build: Main Crystal already placed!")
+                can_build = False
+
         if can_build and item.item_id == "elevator_down":
             if self.world_manager.get_elevator_link(grid_x, grid_y):
                 print("Cannot build: An elevator link already exists here.")
                 can_build = False
 
         if can_build:
+            image = self.build_image_surfaces[item.build_image_id]
+            new_building = Building(grid_x, grid_y, item.item_id, image)
             if item.item_id == "elevator_down":
                 # --- This is your correct elevator logic from the last fix ---
                 overworld_world = self.world_manager.get_world("overworld")
@@ -153,10 +160,9 @@ class InventoryManager:
                     return
 
                 if world.world_type == "overworld":
-                    image = self.build_image_surfaces["elevator_down"]
-                    new_building = Building(grid_x, grid_y, "elevator_down", image)
                     world.buildings_list.append(new_building)
                     world.set_tile(grid_x, grid_y, "elevator_up")
+                    world.get_tile_at_grid_pos(grid_x, grid_y).building = new_building
 
                     for y in range(grid_y - 1, grid_y + 2):
                         for x in range(grid_x - 1, grid_x + 2):
@@ -165,27 +171,22 @@ class InventoryManager:
 
                 elif world.world_type == "cave":
                     world.set_tile(grid_x, grid_y, "elevator_up")
-                    image = self.build_image_surfaces["elevator_down"]
-                    new_building = Building(grid_x, grid_y, "elevator_down", image)
                     overworld_world.buildings_list.append(new_building)
                     overworld_world.set_tile(grid_x, grid_y, "elevator_up")
+                    overworld_world.get_tile_at_grid_pos(grid_x, grid_y).building = new_building
 
                 self.world_manager.create_elevator_link((grid_x, grid_y), (grid_x, grid_y))
                 print(f"Placed elevator link at ({grid_x}, {grid_y})")
 
             else:
-                # 1. Create the building
-                image = self.build_image_surfaces[item.build_image_id]
-                new_building = Building(grid_x, grid_y, item.item_id, image)
-
-                # 2. Link the building to the tiles it occupies
                 for tile in tiles_to_occupy:
                     tile.building = new_building
-
-                # 3. Add building to world list
                 world.buildings_list.append(new_building)
                 print(f"Placed {item.name} at ({grid_x}, {grid_y})")
 
+            if new_building.item_id == "main_crystal":
+                game.main_crystal = new_building
+                print("Main Crystal has been placed!")
 
             self.inventory.remove_item(self.inventory.selected_slot_index, 1)
 
@@ -231,6 +232,15 @@ class InventoryManager:
         if can_build and buildable_item.item_id == "elevator_down":
              if self.world_manager.get_elevator_link(grid_x, grid_y):
                 can_build = False
+
+        # --- Ghost Check for Crystal ---
+        if can_build and buildable_item.item_id == "main_crystal":
+            # This is slightly hacky, but we don't have the `game` object here.
+            # We can just check the inventory for the crystal.
+            # A better fix would be to pass `game` to this draw call.
+            # For now, we'll assume if the player *has* a crystal, it's not placed.
+            # The *placing* logic (`try_place_building`) has the real check.
+            pass
 
         # --- Draw the ghost with a red/white tint ---
         tint = (255, 255, 255, 150) if can_build else (255, 50, 50, 150)
