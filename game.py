@@ -73,6 +73,7 @@ class Game:
         self.tile_dictionary = load_tiles_from_atlas(tileset_image, TILE_ATLAS)
         self.build_image_surfaces = load_build_images(BUILD_IMAGES)
         self.rocks_image_surfaces = load_rocks_images(ROCKS_IMAGES)
+        self.tree_image_surfaces = load_tree_images(TREE_IMAGES)
 
         # --- Initialize Core Systems ---
         if self.debug:
@@ -82,7 +83,12 @@ class Game:
 
         self.player = Player(0, 0, debug=self.debug)
         self.camera = Camera(self.world_surface_width, self.world_surface_height)
-        self.world_manager = WorldManager(seed=seed, tile_dictionary=self.tile_dictionary, rocks_images=self.rocks_image_surfaces)
+        self.world_manager = WorldManager(
+            seed=seed,
+            tile_dictionary=self.tile_dictionary,
+            rocks_images=self.rocks_image_surfaces,
+            tree_images=self.tree_image_surfaces
+        )
         self.camera.world = self.world_manager.get_current_world()
 
         # --- Main Game Loop Tracking ---

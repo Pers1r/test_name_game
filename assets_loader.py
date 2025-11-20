@@ -216,6 +216,16 @@ ROCKS_IMAGES = {
         'actual_size': 64,
         'game_size': 1,
     },
+    'resource_wood': {
+        'path': 'assets/Items/log_dark_oak.png',
+        'actual_size': 32,
+        'game_size': 1,
+    },
+    'resource_stick': {
+        'path': 'assets/Items/stick.png',
+        'actual_size': 32,
+        'game_size': 1,
+    },
     'cave_stone' : {
         'path': 'assets/Tiles/greystone.png',
         'actual_size': 128,
@@ -262,6 +272,24 @@ ROCKS_IMAGES = {
         'game_size': 1,
     },
     # ...
+}
+
+TREE_IMAGES = {
+    'bush': {
+        'path': 'assets/Trees_assets/Trees_texture_shadow_dark/Tree1.png', # Make sure you have these images!
+        'actual_size': 128, # px
+        'game_size': 1, # 1x1 tile
+    },
+    'tree_small': {
+        'path': 'assets/Trees_assets/Trees_texture_shadow_dark/Tree3.png',
+        'actual_size': 64,
+        'game_size': 1, # Tall but takes 1 tile base
+    },
+    'tree_large': {
+        'path': 'assets/Trees_assets/Trees_texture_shadow_dark/Tree2.png',
+        'actual_size': 64,
+        'game_size': 2, # Bigger base (2x2 tiles)
+    },
 }
 
 def load_tiles_from_atlas(tileset_image, atlas_definition):
@@ -326,5 +354,29 @@ def load_rocks_images(rocks_images_data):
             placeholder = pygame.Surface((target_pixel_size, target_pixel_size))
             placeholder.fill((255, 0, 255)) # Bright pink error color
             loaded_surfaces[image_id] = placeholder
+
+    return loaded_surfaces
+
+def load_tree_images(tree_images_data):
+    loaded_surfaces = {}
+    for image_id, data in tree_images_data.items():
+        try:
+            image = pygame.image.load(data["path"]).convert_alpha()
+            # Scale logic same as your other loaders...
+            target_pixel_size = data["game_size"] * TILE_SIZE
+
+            # Keep aspect ratio if the image is tall (like a tree)
+            ratio = image.get_height() / image.get_width()
+            final_height = int(target_pixel_size * ratio)
+
+            scaled_image = pygame.transform.scale(image, (target_pixel_size, final_height))
+            loaded_surfaces[image_id] = scaled_image
+            print(f"Loaded tree: {image_id}")
+        except Exception as e:
+            print(f"Error loading tree '{image_id}': {e}")
+            # Fallback green square
+            s = pygame.Surface((TILE_SIZE, TILE_SIZE))
+            s.fill((0, 100, 0))
+            loaded_surfaces[image_id] = s
 
     return loaded_surfaces

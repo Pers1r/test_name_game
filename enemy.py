@@ -62,6 +62,8 @@ class Enemy(pygame.sprite.Sprite):
         # Optimization: Check buildings, but we only care about the closest one to add to candidates
         for building in world.buildings_list:
             if building.is_alive and building.item_id != "main_crystal":
+                if building.item_id in ["tree_small", "tree_large", "bush"]:
+                    continue
                 d = (self.pos - building.world_rect.center).magnitude()
                 if d < min_b_dist:
                     min_b_dist = d

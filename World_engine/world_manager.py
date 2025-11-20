@@ -4,14 +4,14 @@ from constants import *
 
 
 class WorldManager:
-    def __init__(self, seed, tile_dictionary, rocks_images):
+    def __init__(self, seed, tile_dictionary, rocks_images, tree_images):
         """
         Manages all game worlds, the current active world,
         and transitions between them.
         """
         self.worlds = {
-            "overworld" : World(seed, tile_dictionary, rocks_images, world_type="overworld"),
-            "cave" : World(seed, tile_dictionary, rocks_images, world_type="cave")
+            "overworld" : World(seed, tile_dictionary, rocks_images, tree_images, world_type="overworld"),
+            "cave" : World(seed, tile_dictionary, rocks_images, tree_images, world_type="cave")
         }
         self.current_world_id = "overworld"
 

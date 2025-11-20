@@ -4,14 +4,17 @@ from constants import *
 from .tile import *
 from .chunk import *
 from Entities.dropped_item import DroppedItem
+from Building.building import Building
+from forest_generator import ForestGenerator
 
 
 class World:
-    def __init__(self, seed, tile_dictionary, rocks_images, world_type="overworld"):
+    def __init__(self, seed, tile_dictionary, rocks_images, tree_images, world_type="overworld"):
         self.chunks = {}
         self.seed = seed
         self.tile_dictionary = tile_dictionary
         self.rocks_images = rocks_images
+        self.tree_images = tree_images
         self.world_type = world_type
 
         self.buildings_list = []
@@ -20,6 +23,11 @@ class World:
         self.enemy_list = []
 
         self.item_factory = None
+
+        if self.world_type == "overworld":
+            self.forest_gen = ForestGenerator(seed)
+        else:
+            self.forest_gen = None
 
     def update(self, dt, player, inventory_manager, main_crystal):
         """
@@ -44,11 +52,26 @@ class World:
         surviving_buildings = []
         for building in self.buildings_list:
             if building.health <= 0:
-                # Building is destroyed, drop its item
-                item_proto = self.item_factory.get(building.item_id)
-                if item_proto:
-                    new_drop = DroppedItem(building.world_rect.centerx, building.world_rect.centery, item_proto)
-                    self.dropped_items_list.append(new_drop)
+                # --- MODIFIED DROP LOGIC ---
+                drop_id = None
+
+                # Custom drops for Trees
+                if building.item_id == "tree_large":
+                    drop_id = "resource_wood"
+                elif building.item_id == "tree_small":
+                    drop_id = "resource_wood"
+                elif building.item_id == "bush":
+                    drop_id = "resource_stick"
+                else:
+                    # Default behavior (e.g. Work Bench drops Work Bench)
+                    drop_id = building.item_id
+                if drop_id:
+                    item_proto = self.item_factory.get(drop_id)
+                    if item_proto:
+                        new_drop = DroppedItem(building.world_rect.centerx, building.world_rect.centery, item_proto)
+                        self.dropped_items_list.append(new_drop)
+                    else:
+                        print(f"Error: Drop ID '{drop_id}' not found in item factory.")
 
                 # Unlink the building from the tiles it occupied
                 size = building.game_size
@@ -178,7 +201,65 @@ class World:
         new_chunk = Chunk(chunk_x, chunk_y, self.tile_dictionary, self.rocks_images)
         new_chunk.generate_terrain(self)
         self.chunks[(chunk_x, chunk_y)] = new_chunk
+
+        # --- GENERATE TREES FOR THIS NEW CHUNK ---
+        if self.world_type == "overworld":
+            self.generate_chunk_decorations(chunk_x, chunk_y)
+
+        # Re-link any existing buildings (like big trees from neighbors) to this new chunk
+        self.relink_buildings_to_chunk(new_chunk)
         return new_chunk
+
+    def generate_chunk_decorations(self, chunk_x, chunk_y):
+        """Spawns trees/bushes based on noise."""
+        start_x = chunk_x * CHUNK_SIZE
+        start_y = chunk_y * CHUNK_SIZE
+
+        for x in range(start_x, start_x + CHUNK_SIZE):
+            for y in range(start_y, start_y + CHUNK_SIZE):
+
+                # Get the tile. Since we just generated the chunk, it exists.
+                tile = self.get_tile_at_grid_pos_SAFE(x, y)
+
+                # Don't spawn on water or if something is already there
+                if not tile or "water" in tile.tile_type or tile.building:
+                    continue
+
+                tree_type = self.forest_gen.get_tree_at(x, y)
+
+                if tree_type:
+                    image = self.tree_images.get(tree_type)
+                    if not image: continue
+
+                    new_tree = Building(x, y, tree_type, image)
+
+                    # Set Health
+                    if tree_type == "tree_large": new_tree.health = 100
+                    elif tree_type == "tree_small": new_tree.health = 50
+                    elif tree_type == "bush": new_tree.health = 20
+
+                    self.buildings_list.append(new_tree)
+                    tile.building = new_tree
+
+    def relink_buildings_to_chunk(self, chunk):
+        """
+        Ensures that any large buildings (like trees) that overlap this chunk
+        are correctly linked to the newly generated tiles.
+        """
+        chunk_rect = chunk.world_rect
+        for building in self.buildings_list:
+            if building.world_rect.colliderect(chunk_rect):
+                # This building touches this chunk, link tiles
+                size = building.game_size
+                grid_x = building.world_rect.x // TILE_SIZE
+                grid_y = building.world_rect.y // TILE_SIZE
+
+                for y in range(grid_y, grid_y + size):
+                    for x in range(grid_x, grid_x + size):
+                        # Only link if the tile belongs to THIS chunk
+                        tile = self.get_tile_at_grid_pos_SAFE(x, y)
+                        if tile:
+                            tile.building = building
 
     def get_tile_at_grid_pos(self, grid_x, grid_y):
         try:

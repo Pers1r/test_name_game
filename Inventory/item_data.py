@@ -25,6 +25,23 @@ ITEM_DATA = {
             "game_size": 2
         }
     },
+    # --- NEW ITEMS ---
+    "resource_wood": {
+        "name": "Wood Log",
+        "type": "resource",
+        "description": "Useful for construction.",
+        "icon_image_id": "resource_wood",
+        "build_data": None,
+        "tool_data": None
+    },
+    "resource_stick": {
+        "name": "Stick",
+        "type": "resource",
+        "description": "A small stick.",
+        "icon_image_id": "resource_stick",
+        "build_data": None,
+        "tool_data": None
+    },
     "work_branch": {
         "name": "Workbench",
         "type": "buildable",
